@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="./assets/visage-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-180.png">
 <link rel="manifest" href="./manifest.webmanifest">
-<title>VISAGE 3.6 | Portada distribuida</title>
+<title>VISAGE 4.0 | Lectura facial dinámica</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -706,79 +706,96 @@ async function frameLoop(id){
 }
 
 // Coordenadas propias del rostro, orientadas según el eje ocular.
+// Marco local del rostro basado en referencias CENTRALES de piel.
+// Nunca utilizamos el punto medio de los ojos como eje anatómico.
 function faceGeometry(w,h){
   const P=i=>point(i,w,h);
-
-  const eyeL=P(33),eyeR=P(263);
-  const origin=mid(eyeL,eyeR);
-  const d=dist(eyeL,eyeR);
-
-  const ux={x:(eyeR.x-eyeL.x)/d,y:(eyeR.y-eyeL.y)/d};
-  const uy={x:-ux.y,y:ux.x};
-
-  // Hacer que el eje vertical apunte hacia la barbilla.
+  const bridge=P(168);           // entre los ojos, sobre el puente nasal
+  const cupid=P(0);             // centro exterior del labio superior
+  const forehead=P(10);
   const chin=P(152);
-  if((chin.x-origin.x)*uy.x+(chin.y-origin.y)*uy.y<0){
-    uy.x*=-1;uy.y*=-1;
+  const leftEye=P(33),rightEye=P(263);
+  const d=dist(leftEye,rightEye);
+  if(!Number.isFinite(d)||d<1)return null;
+
+  // El eje del puente nasal al arco de Cupido es más representativo
+  // del centro visible del rostro que la media de las comisuras oculares.
+  let axis={x:cupid.x-bridge.x,y:cupid.y-bridge.y};
+  let length=Math.hypot(axis.x,axis.y);
+  if(length<d*.18){
+    axis={x:chin.x-forehead.x,y:chin.y-forehead.y};
+    length=Math.hypot(axis.x,axis.y);
   }
+  if(length<1)return null;
+  const uy={x:axis.x/length,y:axis.y/length};
+  const ux={x:uy.y,y:-uy.x};
 
   const local=p=>{
-    const dx=p.x-origin.x,dy=p.y-origin.y;
+    const dx=p.x-bridge.x,dy=p.y-bridge.y;
     return {x:dx*ux.x+dy*ux.y,y:dx*uy.x+dy*uy.y};
   };
   const world=p=>({
-    x:origin.x+p.x*ux.x+p.y*uy.x,
-    y:origin.y+p.x*ux.y+p.y*uy.y
+    x:bridge.x+p.x*ux.x+p.y*uy.x,
+    y:bridge.y+p.x*ux.y+p.y*uy.y
   });
   const L=i=>local(P(i));
-  return {P,L,local,world,d};
+
+  // Validar orientación: ojo de índice 33 debe ser lateral contrario al 263.
+  if(L(33).x>=-d*.16 || L(263).x<=d*.16)return null;
+  // Los puntos centrales han de seguir un eje coherente.
+  if(Math.abs(L(2).x)>d*.22 || Math.abs(L(152).x)>d*.26)return null;
+  return {P,L,local,world,d,bridge,cupid,uy,ux};
 }
 
-// Usar referencias faciales únicamente para las líneas, nunca para dibujar cejas.
-// Centro de fosa nasal estimado a partir del anillo de landmarks
-// de cada narina. Face Mesh no segmenta el agujero nasal.
 function eyebrowData(g){
   const configs=[
     {
       upper:[70,63,105,66,107],
-      nostrilRing:[20,60,75,79,166,238],
+      // Punto interior de cada ala nasal + borde de la narina.
+      nostril:[97,98],
       outerEye:33,
       iris:[468,469,470,471,472]
     },
     {
       upper:[300,293,334,296,336],
-      nostrilRing:[250,290,305,309,392,458],
+      nostril:[326,327],
       outerEye:263,
       iris:[473,474,475,476,477]
     }
   ];
   return configs.map(cfg=>{
     const upper=cfg.upper.map(i=>g.L(i));
-    const sideX=avg(upper.map(p=>p.x));
-    const narina=cfg.nostrilRing.map(i=>g.L(i));
+    const sign=avg(upper.map(p=>p.x))<0?-1:1;
+    const nostril=cfg.nostril.map(i=>g.L(i));
+    const irisPoints=cfg.iris.map(i=>g.L(i));
+    const outerIris=irisPoints.slice(1).reduce((best,p)=>
+      sign*p.x>sign*best.x?p:best,irisPoints[0]);
+
     return {
-      upper,
-      sign:sideX<0?-1:1,
+      upper,sign,
       nose:{
-        x:avg(narina.map(p=>p.x)),
-        y:avg(narina.map(p=>p.y))
+        x:avg(nostril.map(p=>p.x)),
+        y:avg(nostril.map(p=>p.y))
       },
       eye:g.L(cfg.outerEye),
-      iris:{
-        x:avg(cfg.iris.map(i=>g.L(i).x)),
-        y:avg(cfg.iris.map(i=>g.L(i).y))
-      }
+      // El borde EXTERIOR del iris, no el centro, para la línea PA.
+      iris:outerIris
     };
   });
 }
 function compute(w,h){
-  if(!points)return null;
+  if(!points || points.length<478 || !video.videoWidth)return null;
   const g=faceGeometry(w,h);
+  if(!g)return null;
   const brows=eyebrowData(g);
+  if(brows[0].sign===brows[1].sign)return null;
   const piDistance=avg(brows.map(b=>Math.abs(b.nose.x)));
-  // El punto 0 corresponde al centro de la línea superior del labio.
+  if(!Number.isFinite(piDistance)||piDistance<g.d*.025||
+     piDistance>g.d*.33)return null;
+  // Eje central x=0 coincide con puente nasal y labio superior.
   return {g,brows,cupid:g.L(0),piDistance};
 }
+
 function line(ctx,a,b,color,width=2){
   ctx.beginPath();
   ctx.moveTo(a.x,a.y);
@@ -788,228 +805,118 @@ function line(ctx,a,b,color,width=2){
   ctx.stroke();
 }
 
-// Triangulación canónica de MediaPipe: sus triángulos no cambian
-// de índices al girar la cabeza. Calculados una sola vez.
-function getTriangles(){
-  if(triangulation)return triangulation;
-  if(typeof FACEMESH_TESSELATION==="undefined")return null;
-  const edges=FACEMESH_TESSELATION;
-  const neighbors=Array.from({length:468},()=>new Set());
-  for(const edge of edges){
-    const [a,b]=edge;
-    if(a>=468||b>=468||a<0||b<0)continue;
-    neighbors[a].add(b);
-    neighbors[b].add(a);
-  }
-  const found=[];
-  for(let a=0;a<468;a++){
-    for(const b of neighbors[a]){
-      if(b<=a)continue;
-      for(const c of neighbors[a]){
-        if(c>b && neighbors[b].has(c))found.push([a,b,c]);
-      }
-    }
-  }
-  if(found.length<400)return null;
-  triangulation=found;
-  return found;
-}
-
-function toVertices(w,h){
-  return points.slice(0,468).map(p=>pixel(p,w,h));
-}
-
-// Cada punto de una guía se guarda con tres vértices de la malla
-// y sus pesos baricéntricos. En cada frame se reproyecta sobre
-// el triángulo correspondiente, en vez de permanecer fijo en pantalla.
-function anchorAt(p,vertices,triangles){
-  for(const ids of triangles){
-    const a=vertices[ids[0]],b=vertices[ids[1]],c=vertices[ids[2]];
-    if(p.x<Math.min(a.x,b.x,c.x)-.1 ||
-       p.x>Math.max(a.x,b.x,c.x)+.1 ||
-       p.y<Math.min(a.y,b.y,c.y)-.1 ||
-       p.y>Math.max(a.y,b.y,c.y)+.1)continue;
-    const den=(b.y-c.y)*(a.x-c.x)+(c.x-b.x)*(a.y-c.y);
-    if(Math.abs(den)<.00001)continue;
-    const u=((b.y-c.y)*(p.x-c.x)+(c.x-b.x)*(p.y-c.y))/den;
-    const v=((c.y-a.y)*(p.x-c.x)+(a.x-c.x)*(p.y-c.y))/den;
-    const t=1-u-v;
-    if(u>=-.002 && v>=-.002 && t>=-.002)
-      return {ids,weights:[u,v,t]};
-  }
-  return null;
-}
-function sampleSegment(a,b,step){
-  const n=Math.max(2,Math.ceil(dist(a,b)/step));
-  return Array.from({length:n+1},(_,i)=>{
-    const k=i/n;
-    return {x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k};
-  });
-}
+// Motor de trazado DINÁMICO:
+// Ningún punto ni peso baricéntrico se conserva de una cara anterior.
+// Se reconstruyen las ocho guías desde los landmarks actuales de CADA frame.
 function extended(a,b,length){
-  const d=dist(a,b)||1;
-  return {x:b.x+(b.x-a.x)*length/d,
-          y:b.y+(b.y-a.y)*length/d};
-}
-function intersection(a,b,c,d){
-  const rx=b.x-a.x,ry=b.y-a.y,sx=d.x-c.x,sy=d.y-c.y;
-  const den=rx*sy-ry*sx;
-  if(Math.abs(den)<1e-6)return null;
-  const qx=c.x-a.x,qy=c.y-a.y;
-  const t=(qx*sy-qy*sx)/den;
-  const u=(qx*ry-qy*rx)/den;
-  if(t<.8||u<0||u>1)return null;
-  return {t,x:a.x+t*rx,y:a.y+t*ry};
-}
-// Referencia del borde superior de ceja más elevado entre ambos lados.
-// Face Mesh aproxima el nacimiento del vello: no mide cada pelo.
-function highestBrowReference(brows){
-  let highest=null;
-  for(let side=0;side<brows.length;side++){
-    for(const p of brows[side].upper){
-      if(!highest || p.y<highest.y)highest={x:p.x,y:p.y,side};
-    }
-  }
-  return highest;
+  const d=dist(a,b);
+  if(d<.001)return null;
+  return {
+    x:b.x+(b.x-a.x)*length/d,
+    y:b.y+(b.y-a.y)*length/d
+  };
 }
 function atY(a,b,y){
   const dy=b.y-a.y;
   if(Math.abs(dy)<.001)return null;
   return {x:a.x+(y-a.y)*(b.x-a.x)/dy,y};
 }
-
-function buildSurface(){
-  if(!points||!video.videoWidth)return null;
-  const triangles=getTriangles();
-  if(!triangles)return null;
-
-  const {w,h}=size();
+function highestBrowReference(brows){
+  const samples=brows.flatMap(b=>b.upper);
+  if(!samples.length)return null;
+  return samples.reduce((best,p)=>p.y<best.y?p:best);
+}
+function buildSurface(w=innerWidth,h=innerHeight){
   const c=compute(w,h);
   if(!c)return null;
   const {g,brows,cupid,piDistance}=c;
   const W=p=>g.world(p);
-  const forehead=g.L(10),chin=g.L(152);
-  const topY=forehead.y+g.d*.04;
-  const specs=[];
-  const add=(a,b,color,width=1.9)=>{
-    specs.push({a:W(a),b:W(b),color:"#e875d2",width});
+  const top=g.L(10),chin=g.L(152);
+  const topY=top.y+g.d*.035;
+  const specs=[],labels=[];
+  const add=(a,b)=>{
+    if(!a||!b||![a.x,a.y,b.x,b.y].every(Number.isFinite))
+      return false;
+    const A=W(a),B=W(b);
+    if(dist(A,B)<g.d*.018)return false;
+    specs.push({a:A,b:B});
+    return true;
+  };
+  const label=(name,local)=>{
+    if(local&&Number.isFinite(local.x)&&Number.isFinite(local.y))
+      labels.push({name,p:W(local)});
   };
 
-  // LC desde la frente hasta la barbilla.
-  add({x:0,y:topY},{x:0,y:chin.y},"#f8d79e",2);
-
-  // PI verticales paralelas basadas en la separación de las narinas.
+  // LC: nace del eje del puente nasal y el centro del labio.
+  add({x:0,y:topY},{x:0,y:chin.y});
+  // Dos PI separadas simétricamente respecto al eje central.
   for(const brow of brows){
     const x=brow.sign*piDistance;
-    add({x,y:topY},{x,y:brow.nose.y+g.d*.12},"#ffffff",1.9);
+    add({x,y:topY},{x,y:brow.nose.y+g.d*.09});
   }
 
-  // PA: nariz -> iris -> frente, estimadas sobre cada mitad facial.
-  // PF: línea desde el centro del labio superior a la comisura
-  // externa real del ojo (33 y 263).
+  // Dos PA y dos PF, reconstruidas desde la geometría actual del rostro.
+  const PA=[],PF=[];
   for(const brow of brows){
-    add(brow.nose,extended(brow.nose,brow.iris,g.d*.45),
-        "#f8d79e",1.9);
-    add(cupid,extended(cupid,brow.eye,g.d*.35),
-        "#8cddff",1.9);
+    const archEnd=extended(brow.nose,brow.iris,g.d*.40);
+    const tailEnd=extended(cupid,brow.eye,g.d*.32);
+    if(!archEnd||!tailEnd)return null;
+    add(brow.nose,archEnd);
+    add(cupid,tailEnd);
+    PA.push({a:brow.nose,b:brow.iris});
+    PF.push({a:cupid,b:brow.eye});
   }
 
-  // Regla profesional: tomar el vello superior más alto (estimado)
-  // entre ambas cejas, NO promediar sus alturas.
+  // Horizontal perpendicular a la LC, tomada desde la ceja superior.
   const highest=highestBrowReference(brows);
-  if(highest){
-    // g.L usa un eje facial local: Y constante = escuadra con LC.
-    const height=highest.y;
-    const left=atY(brows[0].nose,brows[0].iris,height);
-    const right=atY(brows[1].nose,brows[1].iris,height);
-    if(left&&right){
-      // Línea de altura perpendicular a LC, compartida por ambos PA.
-      add(left,right,"#9cf0d2",1.7);
-      // Marcas transversales discretas, sin círculos ni cejas falsas.
-      for(const brow of brows){
-        const p=atY(brow.nose,brow.iris,height);
-        if(!p)continue;
-        const dx=brow.iris.x-brow.nose.x;
-        const dy=brow.iris.y-brow.nose.y;
-        const len=Math.hypot(dx,dy)||1;
-        const half=g.d*.009;
-        add({x:p.x-dy/len*half,y:p.y+dx/len*half},
-            {x:p.x+dy/len*half,y:p.y-dx/len*half},
-            "#f8d79e",2);
-      }
-    }
+  if(!highest)return null;
+  const height=highest.y;
+  const hits=PA.map(l=>atY(l.a,l.b,height));
+  if(!hits.every(Boolean))return null;
+  add(hits[0],hits[1]);
+
+  for(let i=0;i<brows.length;i++){
+    const b=brows[i],x=b.sign*piDistance;
+    label("INICIO",{x,y:height-g.d*.055});
+    label("ARCO",{x:hits[i].x,y:height-g.d*.055});
+    const tail=atY(PF[i].a,PF[i].b,height);
+    if(tail)label("FINAL",{x:tail.x,y:height-g.d*.055});
   }
 
-  const vertices=toVertices(w,h);
-  const step=Math.max(4,g.d*.018);
-  const mapped=specs.map(s=>{
-    const anchors=sampleSegment(s.a,s.b,step)
-      .map(p=>anchorAt(p,vertices,triangles));
-    return {color:s.color,width:s.width,anchors};
-  });
-  // Etiquetas simples, sin puntos circulares y ancladas a la malla.
-  const labelY=highest ? highest.y : avg(brows.map(b=>
-    avg(b.upper.map(p=>p.y))
-  ));
-  mapped.labels=[];
-  const putLabel=(name,local)=>{
-    const anchor=anchorAt(W(local),vertices,triangles);
-    if(anchor)mapped.labels.push({name,anchor});
-  };
-  for(const b of brows){
-    putLabel("INICIO",{x:b.sign*piDistance,y:labelY-g.d*.075});
-    const arch=atY(b.nose,b.iris,labelY);
-    if(arch)putLabel("ARCO",{x:arch.x,y:arch.y-g.d*.065});
-    const tail=atY(cupid,b.eye,labelY);
-    if(tail)putLabel("FINAL",{x:tail.x,y:tail.y-g.d*.06});
-  }
-  // Evitar presentar líneas sueltas como si hubiese una lectura válida.
-  const complete=mapped.filter(s=>
-    s.anchors.filter(Boolean).length>=s.anchors.length*.45
-  ).length;
-  return complete>=7?mapped:null;
+  // Validación geométrica: no dibujar si faltan referencias.
+  if(specs.length!==8)return null;
+  if(specs.some(s=>dist(s.a,s.b)>g.d*3))return null;
+  return {strokes:specs,labels};
 }
 
-function drawSurface(ctx,w,h){
-  if(!surface||!points)return;
-  const vertices=toVertices(w,h);
+function drawSurface(ctx,w,h,guide=null){
+  const map=guide||buildSurface(w,h);
+  if(!map)return false;
+  const scale=Math.max(1,Math.min(1.8,w/400));
   ctx.save();
-  ctx.lineCap="round";
+  ctx.strokeStyle="#e875d2";
+  ctx.lineWidth=1.7*scale;
   ctx.lineJoin="round";
-  ctx.setLineDash([5,4]);
-  for(const stroke of surface){
-    ctx.strokeStyle=stroke.color;
-    ctx.lineWidth=stroke.width;
+  ctx.lineCap="round";
+  ctx.setLineDash([5*scale,4*scale]);
+
+  for(const stroke of map.strokes){
     ctx.beginPath();
-    let active=false;
-    for(const anchor of stroke.anchors){
-      if(!anchor){active=false;continue;}
-      const {ids,weights}=anchor;
-      const a=vertices[ids[0]],b=vertices[ids[1]],c=vertices[ids[2]];
-      if(!a||!b||!c){active=false;continue;}
-      const x=a.x*weights[0]+b.x*weights[1]+c.x*weights[2];
-      const y=a.y*weights[0]+b.y*weights[1]+c.y*weights[2];
-      if(!active){ctx.moveTo(x,y);active=true;}
-      else ctx.lineTo(x,y);
-    }
+    ctx.moveTo(stroke.a.x,stroke.a.y);
+    ctx.lineTo(stroke.b.x,stroke.b.y);
     ctx.stroke();
   }
+
   ctx.setLineDash([]);
   ctx.fillStyle="#83f3dc";
   ctx.textAlign="center";
   ctx.textBaseline="bottom";
-  ctx.font="600 9px system-ui,-apple-system,sans-serif";
+  ctx.font="600 "+Math.round(9*scale)+"px system-ui,-apple-system,sans-serif";
   ctx.shadowColor="#2f1231";
   ctx.shadowBlur=3;
-  for(const lab of (surface.labels||[])){
-    const {ids,weights}=lab.anchor;
-    const a=vertices[ids[0]],b=vertices[ids[1]],c=vertices[ids[2]];
-    if(!a||!b||!c)continue;
-    const x=a.x*weights[0]+b.x*weights[1]+c.x*weights[2];
-    const y=a.y*weights[0]+b.y*weights[1]+c.y*weights[2];
-    ctx.fillText(lab.name,x,y);
-  }
+  for(const lab of map.labels)ctx.fillText(lab.name,lab.p.x,lab.p.y);
   ctx.restore();
+  return true;
 }
 
 function drawResult(ctx){
@@ -1093,7 +1000,11 @@ function captureFace(){
   if(!c)return;
 
   const skin=skinEstimate(ctx,c);
-  drawResult(ctx);
+  if(!drawSurface(ctx,photo.width,photo.height)){
+    capture.disabled=true;
+    $("instruction").textContent="Ajusta la posición del rostro";
+    return;
+  }
 
   $("photo").src=photo.toDataURL("image/jpeg",.94);
   $("skin").textContent=skin.label;
