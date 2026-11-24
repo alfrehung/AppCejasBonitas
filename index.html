@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#18131b">
-<title>VISAGE 3.3 | Escaneo directo</title>
+<title>VISAGE 3.4 | Fondo de video</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -123,20 +123,86 @@ p{line-height:1.55;color:#ded0dc}
   .result-row{gap:9px}
   .result-label,.result-value{font-size:13px}
 }
+
+/* Video vertical exclusivo de la pantalla de escaneo inicial */
+#start{
+  position:relative;
+  isolation:isolate;
+  min-height:100dvh;
+  width:100%;
+  padding:0;
+  overflow:hidden;
+  background:#100c12;
+}
+#start .start-video{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;object-position:center;
+  opacity:.75;
+  pointer-events:none;
+  z-index:0;
+}
+#start .start-tint{
+  position:absolute;inset:0;z-index:1;
+  pointer-events:none;
+  background:linear-gradient(180deg,
+    rgba(18,12,19,.25),rgba(18,12,19,.40) 43%,
+    rgba(18,12,19,.75));
+}
+#start .start-content{
+  position:relative;z-index:2;
+  min-height:100dvh;
+  width:100%;
+  padding:calc(38px + env(safe-area-inset-top)) 26px
+    calc(45px + env(safe-area-inset-bottom));
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+#start .start-content p{color:#fff1e8;text-shadow:0 2px 8px #000b}
+#start .start-content h1,#start .start-content .logo{
+  text-shadow:0 2px 10px #000c
+}
+#start .start-content .primary{box-shadow:0 6px 20px #0007}
+#soundToggle{
+  position:absolute;z-index:3;
+  top:calc(18px + env(safe-area-inset-top));
+  right:16px;
+  color:#fff;
+  border:1px solid #ffffff55;
+  border-radius:100px;
+  background:#120d17a8;
+  padding:9px 12px;
+  font-size:13px;
+  line-height:1;
+}
+#soundToggle:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 </style>
 </head>
 <body>
 
 <section id="start" class="screen active">
-  <div class="logo">VISAGE</div>
-  <h1>Escaneo facial</h1>
-  <p>
-    Coloca la cámara frente al rostro de la clienta.
-    Debe mirar al lente, mantener una expresión neutra
-    y tener ambas cejas despejadas.
-  </p>
-  <button class="primary" onclick="startCamera()">Iniciar escaneo</button>
-  <p id="error" role="alert"></p>
+  <video id="startVideo" class="start-video"
+         autoplay muted loop playsinline preload="auto"
+         aria-hidden="true">
+    <source src="assets/intro.mp4" type="video/mp4">
+  </video>
+  <div class="start-tint" aria-hidden="true"></div>
+  <div class="start-content">
+    <div class="logo">VISAGE</div>
+    <h1>Escaneo facial</h1>
+    <p>
+      Coloca la cámara frente al rostro de la clienta.
+      Debe mirar al lente, mantener una expresión neutra
+      y tener ambas cejas despejadas.
+    </p>
+    <button class="primary" onclick="startCamera()">Iniciar escaneo</button>
+    <p id="error" role="alert"></p>
+  </div>
+  <button id="soundToggle" type="button"
+          onclick="toggleIntroSound()" aria-label="Activar sonido"
+          aria-pressed="false">🔇 Sonido</button>
 </section>
 
 <section id="camera" class="screen">
@@ -235,6 +301,36 @@ function show(id){
   document.querySelectorAll(".screen").forEach(s=>
     s.classList.toggle("active",s.id===id)
   );
+  const intro=$("startVideo");
+  const soundBtn=$("soundToggle");
+  if(!intro)return;
+  if(id==="start"){
+    intro.muted=true;
+    if(soundBtn){
+      soundBtn.textContent="🔇 Sonido";
+      soundBtn.setAttribute("aria-label","Activar sonido");
+      soundBtn.setAttribute("aria-pressed","false");
+    }
+    const play=intro.play();
+    if(play&&play.catch)play.catch(()=>{});
+  }else{
+    intro.pause();
+    intro.muted=true;
+  }
+}
+function toggleIntroSound(){
+  const intro=$("startVideo"),btn=$("soundToggle");
+  if(!intro||!$("start").classList.contains("active"))return;
+  intro.muted=!intro.muted;
+  const enabled=!intro.muted;
+  btn.textContent=enabled?"🔊 Sonido":"🔇 Sonido";
+  btn.setAttribute("aria-label",enabled?"Silenciar":"Activar sonido");
+  btn.setAttribute("aria-pressed",String(enabled));
+  // El archivo tiene su pista de audio atenuada -8 dB.
+  if(intro.paused){
+    const play=intro.play();
+    if(play&&play.catch)play.catch(()=>{});
+  }
 }
 function setMessage(text){
   $("scanMsg").textContent=text;
@@ -971,7 +1067,10 @@ function newScan(){
 window.addEventListener("resize",()=>{
   if(running){resize();draw();}
 });
-window.addEventListener("pagehide",stopCamera);
+window.addEventListener("pagehide",()=>{
+  stopCamera();
+  $("startVideo")?.pause();
+});
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden&&running){
     stopCamera();
