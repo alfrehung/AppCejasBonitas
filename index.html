@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#18131b">
-<title>VISAGE 3.1 | Seguimiento estable</title>
+<title>VISAGE 3.2 | Resumen de trabajo</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -86,23 +86,43 @@ p{line-height:1.55;color:#ded0dc}
 }
 #analysisFill{height:100%;width:0;background:var(--gold)}
 #summary{
-  padding:26px 15px 45px;flex-direction:column;
-  align-items:center;overflow:auto
+  padding:calc(16px + env(safe-area-inset-top)) 14px
+    calc(26px + env(safe-area-inset-bottom));
+  flex-direction:column;align-items:center;overflow-y:auto;
 }
-#summary h1{font-size:29px}
 #photo{
-  width:100%;max-width:480px;max-height:60dvh;
-  object-fit:contain;background:#000;border-radius:14px
+  display:block;width:100%;max-width:480px;
+  max-height:65dvh;object-fit:contain;
+  background:#000;border-radius:12px
 }
-.card{
-  max-width:480px;width:100%;background:var(--panel);
-  border-radius:15px;padding:19px;margin-top:18px;overflow-wrap:anywhere
+.result-data{
+  width:100%;max-width:480px;
+  padding:19px 18px 5px;margin-top:14px;
+  background:var(--panel);border-radius:15px;
 }
-.card h2{font-size:19px;color:var(--gold);margin:0 0 12px}
-table{width:100%;border-collapse:collapse}
-td{padding:12px 4px;border-bottom:1px solid #ffffff23}
-td:last-child{text-align:right}
-small{color:#d7cbd5;line-height:1.5}
+.result-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:14px;padding:14px 0;border-bottom:1px solid #ffffff24;
+}
+.result-row:last-child{border-bottom:0}
+.result-label{font-size:15px;color:#efe4e9}
+.result-value{font-weight:600;text-align:right;font-size:15px}
+.skin-result{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.skin-brush{
+  display:block;width:118px;height:41px;
+  background:var(--sample-color,#a78c7a);
+  clip-path:polygon(2% 28%,12% 12%,35% 18%,58% 6%,91% 17%,
+    100% 36%,96% 55%,100% 75%,81% 87%,55% 80%,
+    27% 96%,8% 83%,0 62%);
+  transform:rotate(-3deg);
+  box-shadow:inset 0 0 0 1px #ffffff15;
+}
+#skin{font-size:13px;color:#e8d9e0}
+#summary .primary{margin-top:20px}
+@media(max-width:370px){
+  .result-row{gap:9px}
+  .result-label,.result-value{font-size:13px}
+}
 </style>
 </head>
 <body>
@@ -162,41 +182,25 @@ small{color:#d7cbd5;line-height:1.5}
 </section>
 
 <section id="summary" class="screen">
-  <div class="logo">VISAGE</div>
-  <h1>Mapa de visajismo</h1>
-  <img id="photo" alt="Rostro con líneas de visajismo anatómico">
+  <img id="photo" alt="Fotografía del rostro con líneas de visajismo">
 
-  <div class="card">
-    <h2>Referencias de visajismo</h2>
-    <p>
-      Las guías incluyen el eje central (LC), los dos inicios (PI)
-      estimados desde cada fosa nasal, dos diagonales de altura (PA),
-      dos diagonales de final (PF) hacia el extremo ocular y
-      una horizontal perpendicular al eje central, referida a la ceja con el borde superior de vello más alto.
-    </p>
-    <small>
-      Las guías se sujetan a referencias de la malla facial estimada
-      cuando el escaneo es válido. No se dibujan cejas artificiales.
-      La estudiante dibuja a mano y verifica nacimiento, arco y cola;
-      la malla y las fosas nasales son estimaciones, no mediciones
-      tridimensionales exactas.
-    </small>
-  </div>
-
-<div class="card">
-    <h2>Análisis de pigmentación</h2>
-    <table>
-      <tr><td>Lectura visual de piel</td>
-          <td id="skin">Pendiente</td></tr>
-      <tr><td>Fórmula de pigmento</td>
-          <td>Pendiente de tabla</td></tr>
-      <tr><td>Tiempo de aplicación</td>
-          <td>Pendiente de tabla</td></tr>
-    </table>
-    <p><small>
-      La luminosidad estimada por cámara no determina
-      el fototipo, subtono ni pigmento idóneo.
-    </small></p>
+  <div class="result-data">
+    <div class="result-row">
+      <span class="result-label">Tono de piel identificado</span>
+      <div class="skin-result">
+        <span id="skinBrush" class="skin-brush"
+          role="img" aria-label="Muestra del tono de piel estimado"></span>
+        <span id="skin">Sin lectura</span>
+      </div>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Fórmula recomendada</span>
+      <span id="pigment" class="result-value">Por definir</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Tiempo de aplicación</span>
+      <span id="applicationTime" class="result-value">Por definir</span>
+    </div>
   </div>
 
   <button class="primary" onclick="newScan()">Nuevo Escaneo</button>
@@ -867,33 +871,42 @@ function videoToCanvas(ctx,w,h){
 }
 
 // Lectura aproximada de luminosidad de zonas de mejillas.
+// Muestra de color de piel tomada de zonas de las mejillas ANTES
+// de dibujar las guías, para no contaminar el resultado con sus colores.
+// Es una aproximación RGB condicionada por luz, cámara y balance de blancos.
 function skinEstimate(ctx,c){
-  const w=ctx.canvas.width,h=ctx.canvas.height;
-  const positions=[c.g.P(50),c.g.P(280)];
-  let values=[];
-
-  for(const p of positions){
+  const {width:w,height:h}=ctx.canvas;
+  const cheekPoints=[c.g.P(50),c.g.P(280)];
+  const samples=[];
+  for(const p of cheekPoints){
+    const radius=9;
     const x=Math.round(p.x),y=Math.round(p.y);
-    const sx=clamp(x-7,0,w-1);
-    const sy=clamp(y-7,0,h-1);
-    const data=ctx.getImageData(
-      sx,sy,Math.min(14,w-sx),Math.min(14,h-sy)
-    ).data;
-
+    const sx=clamp(x-radius,0,w-1);
+    const sy=clamp(y-radius,0,h-1);
+    const sw=Math.min(radius*2,w-sx);
+    const sh=Math.min(radius*2,h-sy);
+    if(sw<1||sh<1)continue;
+    const data=ctx.getImageData(sx,sy,sw,sh).data;
     for(let i=0;i<data.length;i+=4){
       const r=data[i],g=data[i+1],b=data[i+2];
-      if(Math.min(r,g,b)<15||Math.max(r,g,b)>245)continue;
-      values.push(.2126*r+.7152*g+.0722*b);
+      const max=Math.max(r,g,b),min=Math.min(r,g,b);
+      if(min<20 || max>246 || max-min>125)continue;
+      samples.push([r,g,b]);
     }
   }
+  if(samples.length<15)return {label:"No determinado",color:null};
 
-  if(!values.length)return "No determinada";
-  values.sort((a,b)=>a-b);
-  const value=values[Math.floor(values.length/2)];
-
-  if(value>175)return "Luminosidad alta";
-  if(value>105)return "Luminosidad media";
-  return "Luminosidad baja";
+  // Mediana de cada canal: menor sensibilidad a píxeles aislados.
+  const median=values=>{
+    values.sort((a,b)=>a-b);
+    return values[Math.floor(values.length/2)];
+  };
+  const rgb=[0,1,2].map(i=>median(samples.map(s=>s[i])));
+  const color="#"+rgb.map(v=>v.toString(16).padStart(2,"0")).join("");
+  const luminance=.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];
+  const label=luminance>=175?"Claro (estimado)":
+    luminance>=107?"Medio (estimado)":"Oscuro (estimado)";
+  return {label,color};
 }
 
 function captureFace(){
@@ -920,7 +933,13 @@ function captureFace(){
   drawResult(ctx);
 
   $("photo").src=photo.toDataURL("image/jpeg",.94);
-  $("skin").textContent=skin;
+  $("skin").textContent=skin.label;
+  $("skinBrush").style.setProperty("--sample-color",
+    skin.color||"repeating-linear-gradient(45deg,#aaa,#aaa 6px,#777 6px,#777 12px)");
+  $("skinBrush").setAttribute("aria-label",
+    skin.color?"Muestra estimada de piel "+skin.color:"Muestra de piel no determinada");
+  $("pigment").textContent="Por definir";
+  $("applicationTime").textContent="Por definir";
 
   stopCamera();
   show("analysis");
