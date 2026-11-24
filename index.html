@@ -3,273 +3,196 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#17121a">
-<title>Visajismo de Cejas</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#18131b">
+<title>VISAGE 2.0 | Visajismo Facial</title>
 <style>
 :root{
-  --bg:#17121a;
-  --panel:#27202b;
-  --gold:#e8c395;
-  --white:#fffaf5;
+  --bg:#18131b;--gold:#e9c99c;
+  --panel:#29212e;--white:#fff9f3;
+  --green:#8ef2bb;--red:#ffb2a8;
 }
 *{box-sizing:border-box}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--white);
-  font-family:system-ui,-apple-system,Arial,sans-serif;
-}
-button{
-  border:0;
-  cursor:pointer;
-  font:inherit;
-}
-.screen{
-  display:none;
-  min-height:100dvh;
-}
+body{margin:0;background:var(--bg);color:var(--white);
+  font-family:system-ui,-apple-system,Arial,sans-serif}
+button{cursor:pointer;font:inherit;border:0}
+.screen{display:none;min-height:100dvh}
 .screen.active{display:flex}
 #intro,#start,#analysis{
-  align-items:center;
-  justify-content:center;
-  padding:30px;
-  text-align:center;
-  flex-direction:column;
-  background:radial-gradient(circle at 50% 28%,#493442,var(--bg) 67%);
+  flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:28px;
+  background:radial-gradient(circle at 50% 25%,#473340,var(--bg) 70%)
 }
-.logo{
-  font-family:Georgia,serif;
-  color:var(--gold);
-  font-size:38px;
-  letter-spacing:2px;
-}
-h1{
-  font-family:Georgia,serif;
-  font-weight:400;
-  font-size:35px;
-}
-p{line-height:1.6;color:#d5c9d4}
+.logo{font:36px Georgia,serif;letter-spacing:3px;color:var(--gold)}
+h1{font:34px Georgia,serif;font-weight:400}
+p{line-height:1.55;color:#ded0dc}
 .primary{
-  background:var(--gold);
-  color:#211720;
-  font-weight:700;
-  padding:16px 30px;
-  border-radius:40px;
-  min-width:205px;
-  margin-top:22px;
+  padding:16px 28px;min-width:205px;
+  background:var(--gold);color:#21171e;
+  border-radius:35px;font-weight:750;margin-top:20px
 }
-.secondary{
-  padding:12px 18px;
-  color:var(--gold);
-  background:transparent;
-  border:1px solid var(--gold);
-  border-radius:24px;
-}
+.primary:disabled{opacity:.4}
+#error{color:var(--red)}
 #camera{
-  position:fixed;
-  inset:0;
-  width:100%;
-  height:100dvh;
-  overflow:hidden;
-  background:#050505;
+  position:fixed;inset:0;overflow:hidden;
+  width:100%;height:100dvh;background:#000
 }
 #video,#overlay{
-  position:absolute;
-  width:100%;
-  height:100%;
-  object-fit:cover;
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover
 }
 #overlay{pointer-events:none}
-.topbar{
-  position:absolute;
-  top:0;
-  left:0;
-  right:0;
-  padding:calc(20px + env(safe-area-inset-top)) 18px 20px;
-  background:linear-gradient(#000a,transparent);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+.top{
+  position:absolute;left:0;right:0;top:0;
+  padding:calc(18px + env(safe-area-inset-top)) 18px 15px;
+  background:linear-gradient(#000c,transparent);
+  display:flex;justify-content:space-between;align-items:center;
+  gap:12px
 }
-.topbar strong{color:var(--gold);letter-spacing:1px}
-.status{
-  background:#111b;
-  padding:8px 12px;
-  border-radius:18px;
-  font-size:12px;
+.top strong{color:var(--gold)}
+.chip{padding:7px 11px;background:#101014be;
+  border-radius:20px;font-size:12px}
+.scan-box{
+  position:absolute;top:22%;left:6%;right:6%;
+  display:flex;flex-direction:column;align-items:center;
+  pointer-events:none
 }
-.camera-bottom{
-  position:absolute;
-  bottom:0;
-  left:0;
-  right:0;
-  padding:24px 18px calc(22px + env(safe-area-inset-bottom));
-  background:linear-gradient(transparent,#000d);
-  text-align:center;
+#scanMsg{
+  background:#101014cc;border-radius:25px;
+  padding:9px 15px;font-size:13px;text-align:center
 }
-.hint{
-  font-size:13px;
-  color:#fff;
-  margin-bottom:14px;
+.scan-track{
+  margin-top:12px;width:190px;height:6px;
+  border-radius:10px;overflow:hidden;background:#ffffff50
 }
+#scanFill{width:0;height:100%;background:var(--green);
+  transition:width .12s linear}
+.bottom{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,#000e);
+  padding:40px 18px calc(25px + env(safe-area-inset-bottom));
+  text-align:center
+}
+#instruction{font-size:13px;margin-bottom:18px}
 .capture{
-  width:91px;
-  height:91px;
-  border-radius:50%;
-  border:5px solid white;
-  background:var(--gold);
-  box-shadow:0 0 0 4px #0006;
-  font-weight:800;
-  color:#291b26;
+  width:94px;height:94px;border:5px solid white;
+  border-radius:50%;background:var(--gold);
+  font-weight:800;color:#21171e
 }
-.capture:disabled{opacity:.45}
-.progress-track{
-  width:min(330px,90vw);
-  height:9px;
-  background:#514354;
-  border-radius:20px;
-  overflow:hidden;
-  margin-top:20px;
+.capture:disabled{opacity:.35}
+#analysisBar{
+  width:min(320px,85vw);height:9px;
+  background:#54435c;border-radius:20px;overflow:hidden
 }
-#progress{
-  height:100%;
-  width:0;
-  background:var(--gold);
-}
+#analysisFill{height:100%;width:0;background:var(--gold)}
 #summary{
-  flex-direction:column;
-  align-items:center;
-  padding:25px 15px 45px;
-  background:var(--bg);
-  overflow:auto;
+  padding:26px 15px 45px;flex-direction:column;
+  align-items:center;overflow:auto
 }
-#summary h1{font-size:29px;margin:12px 0 18px}
+#summary h1{font-size:29px}
 #photo{
-  width:100%;
-  max-width:480px;
-  max-height:58dvh;
-  object-fit:contain;
-  border-radius:16px;
-  background:#080808;
+  width:100%;max-width:480px;max-height:60dvh;
+  object-fit:contain;background:#000;border-radius:14px
 }
-.result-card{
-  width:100%;
-  max-width:480px;
-  margin-top:20px;
-  background:var(--panel);
-  border-radius:17px;
-  padding:20px;
+.card{
+  max-width:480px;width:100%;background:var(--panel);
+  border-radius:15px;padding:19px;margin-top:18px
 }
-.result-card h2{
-  margin:0 0 14px;
-  color:var(--gold);
-  font-size:20px;
-}
-table{
-  width:100%;
-  border-collapse:collapse;
-  text-align:left;
-}
-td{
-  padding:13px 5px;
-  border-bottom:1px solid #ffffff22;
-  vertical-align:top;
-}
-td:last-child{
-  text-align:right;
-  font-weight:600;
-}
-small{color:#d4c8d1;line-height:1.5}
-.error{color:#ffc0b8;margin:16px 0}
+.card h2{font-size:19px;color:var(--gold);margin:0 0 12px}
+table{width:100%;border-collapse:collapse}
+td{padding:12px 4px;border-bottom:1px solid #ffffff23}
+td:last-child{text-align:right}
+small{color:#d7cbd5;line-height:1.5}
 </style>
 </head>
 <body>
 
 <section id="intro" class="screen active">
   <div class="logo">VISAGE</div>
-  <h1>El arte de diseñar cejas</h1>
-  <p>Visajismo facial asistido por tecnología de reconocimiento facial.</p>
+  <h1>Diseño inteligente de cejas</h1>
+  <p>Lectura facial, análisis anatómico y visajismo asistido.</p>
   <button class="primary" onclick="show('start')">Comenzar</button>
 </section>
 
 <section id="start" class="screen">
   <div class="logo">VISAGE</div>
-  <h1>Inicio de escaneo</h1>
+  <h1>Escaneo facial</h1>
   <p>
-    Coloca el teléfono frente al rostro de tu clienta.
-    Procura que mire de frente, con iluminación uniforme
-    y ambas cejas completamente visibles.
+    Coloca la cámara frente al rostro de la clienta.
+    Debe mirar al lente, mantener una expresión neutra
+    y tener ambas cejas despejadas.
   </p>
-  <p>La cámara posterior se activará al comenzar.</p>
   <button class="primary" onclick="startCamera()">Iniciar escaneo</button>
-  <p id="error" class="error" role="alert"></p>
+  <p id="error" role="alert"></p>
 </section>
 
 <section id="camera" class="screen">
-  <video id="video" autoplay muted playsinline></video>
+  <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
 
-  <div class="topbar">
-    <strong>VISAGE · EN VIVO</strong>
-    <span id="tracking" class="status">Buscando rostro...</span>
+  <div class="top">
+    <strong>VISAGE · LECTOR FACIAL</strong>
+    <span id="status" class="chip">Iniciando...</span>
   </div>
 
-  <div class="camera-bottom">
-    <div id="hint" class="hint">Alinea el rostro dentro de la cámara</div>
-    <button id="capture" class="capture" onclick="captureFace()" disabled>
-      Dibujar
-    </button>
+  <div id="scanBox" class="scan-box">
+    <div id="scanMsg" aria-live="polite">
+      Buscando rostro...
+    </div>
+    <div class="scan-track">
+      <div id="scanFill"></div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div id="instruction">
+      La aplicación debe completar el reconocimiento primero.
+    </div>
+    <button id="capture" class="capture"
+      onclick="captureFace()" disabled>Dibujar</button>
   </div>
 </section>
 
 <section id="analysis" class="screen">
   <div class="logo">VISAGE</div>
-  <h1>Analizando rostro</h1>
-  <p id="analysisText">Identificando proporciones faciales...</p>
-  <div class="progress-track">
-    <div id="progress"></div>
-  </div>
+  <h1>Analizando facciones</h1>
+  <p id="analysisText">Procesando diseño...</p>
+  <div id="analysisBar"><div id="analysisFill"></div></div>
   <p id="percent">0%</p>
 </section>
 
 <section id="summary" class="screen">
   <div class="logo">VISAGE</div>
-  <h1>Tu diseño de cejas</h1>
-  <img id="photo" alt="Fotografía con diseño de visajismo">
+  <h1>Diseño de cejas</h1>
+  <img id="photo" alt="Diseño de cejas sobre el rostro">
 
-  <div class="result-card">
-    <h2>Análisis de visajismo</h2>
+  <div class="card">
+    <h2>Visajismo facial</h2>
     <p>
-      Propuesta bilateral simétrica basada en las referencias
-      faciales y las dimensiones estimadas de las cejas naturales.
+      Diseño bilateral simétrico calculado utilizando las
+      referencias anatómicas detectadas y las dimensiones
+      aproximadas de las cejas naturales.
     </p>
     <small>
-      Las líneas son guías de trabajo. Verifica la alineación,
-      el grosor y la posición antes de realizar el procedimiento.
+      Propuesta orientativa: comprueba el contorno real,
+      la asimetría facial y las proporciones antes de
+      realizar el procedimiento.
     </small>
   </div>
 
-  <div class="result-card">
-    <h2>Evaluación de pigmentación</h2>
+  <div class="card">
+    <h2>Análisis de pigmentación</h2>
     <table>
-      <tr>
-        <td>Tono de piel estimado</td>
-        <td id="skinTone">Pendiente</td>
-      </tr>
-      <tr>
-        <td>Fórmula de pigmento</td>
-        <td id="pigment">Pendiente de tabla profesional</td>
-      </tr>
-      <tr>
-        <td>Tiempo de aplicación</td>
-        <td id="duration">Pendiente de tabla profesional</td>
-      </tr>
+      <tr><td>Lectura visual de piel</td>
+          <td id="skin">Pendiente</td></tr>
+      <tr><td>Fórmula de pigmento</td>
+          <td>Pendiente de tabla</td></tr>
+      <tr><td>Tiempo de aplicación</td>
+          <td>Pendiente de tabla</td></tr>
     </table>
     <p><small>
-      La lectura de color es orientativa y depende de la iluminación.
-      No determina por sí sola el pigmento adecuado ni el fototipo.
+      La luminosidad estimada por cámara no determina
+      el fototipo, subtono ni pigmento idóneo.
     </small></p>
   </div>
 
@@ -277,695 +200,663 @@ small{color:#d4c8d1;line-height:1.5}
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"></script>
-
 <script>
 "use strict";
 
-const video = document.getElementById("video");
-const overlay = document.getElementById("overlay");
-const captureButton = document.getElementById("capture");
+const $=id=>document.getElementById(id);
+const video=$("video");
+const canvas=$("overlay");
+const capture=$("capture");
 
-let stream = null;
-let mesh = null;
-let landmarks = null;
-let running = false;
-let processing = false;
-let detected = false;
-let geometry = null;
-let lastFaceTime = 0;
-let capturedCanvas = null;
+let mesh=null,stream=null,running=false;
+let inFlight=false,lastFrame=0;
+let points=null,latest=null,ready=false;
+let stableSince=0,previousSample=null,previousTime=0;
+let lastAccepted=0;
+let session=0;
 
-const MODEL_URL =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/";
-
-const $ = id => document.getElementById(id);
+const REQUIRED_MS=2000;
+const MODEL="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/";
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const avg=a=>a.reduce((s,v)=>s+v,0)/a.length;
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+const mix=(a,b,t)=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
 
 function show(id){
-  document.querySelectorAll(".screen").forEach(el=>{
-    el.classList.toggle("active",el.id===id);
-  });
+  document.querySelectorAll(".screen").forEach(s=>
+    s.classList.toggle("active",s.id===id)
+  );
 }
-
-function clamp(x,a,b){
-  return Math.max(a,Math.min(b,x));
+function setMessage(text){
+  $("scanMsg").textContent=text;
 }
-
-function average(values){
-  return values.reduce((a,b)=>a+b,0)/values.length;
+function resetScan(message="Buscando rostro..."){
+  ready=false;
+  latest=null;
+  stableSince=0;
+  previousSample=null;
+  capture.disabled=true;
+  $("scanFill").style.width="0%";
+  $("status").textContent="Escaneando";
+  $("instruction").textContent="Mantén el rostro alineado";
+  setMessage(message);
 }
-
-function distance(a,b){
-  return Math.hypot(a.x-b.x,a.y-b.y);
-}
-
-function midpoint(a,b){
-  return {x:(a.x+b.x)/2,y:(a.y+b.y)/2};
-}
-
-function screenSize(){
+function size(){
   return {w:innerWidth,h:innerHeight};
 }
-
-function resizeOverlay(){
-  const {w,h}=screenSize();
-  const dpr=Math.min(devicePixelRatio||1,2);
-  overlay.width=Math.round(w*dpr);
-  overlay.height=Math.round(h*dpr);
-  const ctx=overlay.getContext("2d");
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+function resize(){
+  const {w,h}=size();
+  const ratio=Math.min(devicePixelRatio||1,2);
+  canvas.width=Math.round(w*ratio);
+  canvas.height=Math.round(h*ratio);
+  canvas.getContext("2d").setTransform(ratio,0,0,ratio,0,0);
 }
-
-function cameraMapping(w,h){
-  const vw=video.videoWidth;
-  const vh=video.videoHeight;
-  const scale=Math.max(w/vw,h/vh);
+function mapping(w,h){
+  const scale=Math.max(w/video.videoWidth,h/video.videoHeight);
   return {
     scale,
-    dx:(w-vw*scale)/2,
-    dy:(h-vh*scale)/2
+    x:(w-video.videoWidth*scale)/2,
+    y:(h-video.videoHeight*scale)/2
   };
 }
-
-function getPoint(index,pts,w,h){
-  const m=cameraMapping(w,h);
+function pixel(p,w,h){
+  const m=mapping(w,h);
   return {
-    x:pts[index].x*video.videoWidth*m.scale+m.dx,
-    y:pts[index].y*video.videoHeight*m.scale+m.dy
+    x:p.x*video.videoWidth*m.scale+m.x,
+    y:p.y*video.videoHeight*m.scale+m.y
   };
 }
+function point(i,w,h){
+  return pixel(points[i],w,h);
+}
 
-async function initMesh(){
+async function initialize(){
   if(mesh)return;
+  if(typeof FaceMesh==="undefined")
+    throw Error("No se cargó el reconocimiento facial.");
 
-  if(typeof FaceMesh==="undefined"){
-    throw new Error("No se pudo cargar el modelo facial. Revisa internet.");
-  }
-
-  mesh=new FaceMesh({
-    locateFile:file=>MODEL_URL+file
-  });
-
+  mesh=new FaceMesh({locateFile:f=>MODEL+f});
   mesh.setOptions({
     maxNumFaces:1,
     refineLandmarks:true,
-    minDetectionConfidence:0.65,
-    minTrackingConfidence:0.65,
+    minDetectionConfidence:.75,
+    minTrackingConfidence:.75,
     selfieMode:false
   });
-
-  mesh.onResults(results=>{
-    if(!running)return;
-
-    const found=results.multiFaceLandmarks?.[0];
-
-    if(found && found.length>=478){
-      landmarks=found;
-      lastFaceTime=performance.now();
-      detected=true;
-      $("tracking").textContent="Rostro detectado";
-      $("hint").textContent="Mantén el rostro de frente";
-      captureButton.disabled=false;
-    }else{
-      detected=false;
-      landmarks=null;
-      geometry=null;
-      captureButton.disabled=true;
-      $("tracking").textContent="Buscando rostro...";
-      $("hint").textContent="Enfoca el rostro completo";
-    }
-
-    drawLive();
-  });
-
+  mesh.onResults(onFace);
   await mesh.initialize();
 }
 
 async function startCamera(){
   $("error").textContent="";
-
   try{
-    if(!window.isSecureContext){
-      throw new Error("Esta aplicación requiere HTTPS.");
-    }
+    if(!isSecureContext)
+      throw Error("La aplicación requiere HTTPS.");
 
-    if(!navigator.mediaDevices?.getUserMedia){
-      throw new Error("El navegador no permite acceso a la cámara.");
-    }
+    if(!navigator.mediaDevices?.getUserMedia)
+      throw Error("No se puede acceder a la cámara.");
 
-    await initMesh();
+    await initialize();
 
-    // No se utiliza la cámara frontal como alternativa.
     stream=await navigator.mediaDevices.getUserMedia({
       audio:false,
       video:{
         facingMode:{exact:"environment"},
         width:{ideal:1920},
-        height:{ideal:1080},
-        frameRate:{ideal:30}
+        height:{ideal:1080}
       }
     });
 
-    const track=stream.getVideoTracks()[0];
-    const settings=track.getSettings();
-
-    // Si el navegador informa otra orientación, se rechaza.
-    if(settings.facingMode && settings.facingMode!=="environment"){
-      stream.getTracks().forEach(t=>t.stop());
-      stream=null;
-      throw new Error("No se seleccionó la cámara posterior.");
-    }
+    const mode=stream.getVideoTracks()[0].getSettings().facingMode;
+    if(mode && mode!=="environment")
+      throw Error("La cámara seleccionada no es posterior.");
 
     video.srcObject=stream;
     await video.play();
 
+    session++;
     running=true;
-    detected=false;
-    landmarks=null;
-    geometry=null;
-    captureButton.disabled=true;
-    resizeOverlay();
+    points=null;
+    resetScan();
+    resize();
     show("camera");
-    processFrames();
-
-  }catch(err){
-    running=false;
-    if(stream){
-      stream.getTracks().forEach(t=>t.stop());
-      stream=null;
-    }
-    $("error").textContent=err.message||
-      "No fue posible iniciar la cámara posterior.";
+    frameLoop(session);
+  }catch(e){
+    stopCamera();
+    $("error").textContent=e.message;
     show("start");
   }
 }
 
-async function processFrames(){
-  if(processing || !running)return;
-  processing=true;
-
-  while(running){
-    if(video.readyState>=2 && video.videoWidth){
-      try{
-        await mesh.send({image:video});
-      }catch(err){
-        console.error("Error de reconocimiento:",err);
-        detected=false;
-        captureButton.disabled=true;
-      }
-    }
-    await new Promise(resolve=>requestAnimationFrame(resolve));
-  }
-
-  processing=false;
-}
-
 function stopCamera(){
   running=false;
-  detected=false;
-  captureButton.disabled=true;
-
-  if(stream){
-    stream.getTracks().forEach(t=>t.stop());
-    stream=null;
-  }
+  session++;
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=null;
   video.pause();
   video.srcObject=null;
 }
 
-// Convierte el rostro en un sistema de coordenadas local.
-// U representa la horizontal facial y V la vertical facial.
-function makeFaceSpace(pts,w,h){
-  const p=i=>getPoint(i,pts,w,h);
+// Verificación de pose, encuadre y estabilidad.
+// No constituye una medida clínica de precisión.
+function validate(p){
+  if(!p||p.length<478)
+    return {ok:false,msg:"No se detectan todos los puntos faciales"};
 
-  const forehead=p(10);
-  const chin=p(152);
-  const origin=p(168);
+  const f=i=>p[i];
+  const left=f(33),right=f(263),nose=f(1);
+  const forehead=f(10),chin=f(152);
+  const eyeWidth=dist(left,right);
+  const height=dist(forehead,chin);
 
-  const len=distance(forehead,chin);
-  const vy={
-    x:(chin.x-forehead.x)/len,
-    y:(chin.y-forehead.y)/len
+  if(!eyeWidth||!height)
+    return {ok:false,msg:"Referencias faciales insuficientes"};
+
+  // El rostro debe ocupar una proporción adecuada.
+  if(height<.32 || eyeWidth<.14)
+    return {ok:false,msg:"Acerca el teléfono al rostro"};
+
+  const bounds=[10,152,234,454,33,263,70,300,98,327,13];
+  if(bounds.some(i=>
+    f(i).x<.035||f(i).x>.965||
+    f(i).y<.035||f(i).y>.965
+  ))return {ok:false,msg:"Centra el rostro completo"};
+
+  // Ángulo lateral aproximado usando la nariz y los ojos.
+  const leftD=dist(nose,left);
+  const rightD=dist(nose,right);
+  const yaw=leftD/(leftD+rightD);
+
+  if(yaw<.39||yaw>.61)
+    return {ok:false,msg:"Mira directamente a la cámara"};
+
+  // Inclinación lateral de los ojos.
+  const roll=Math.abs(
+    Math.atan2(right.y-left.y,right.x-left.x)*180/Math.PI
+  );
+  const correctedRoll=Math.min(roll,Math.abs(180-roll));
+
+  if(correctedRoll>12)
+    return {ok:false,msg:"Endereza ligeramente la cabeza"};
+
+  // La separación entre párpados debe permitir localizar los ojos.
+  const eyeA=dist(f(159),f(145));
+  const eyeB=dist(f(386),f(374));
+  if(eyeA<eyeWidth*.012||eyeB<eyeWidth*.012)
+    return {ok:false,msg:"Mantén ambos ojos abiertos"};
+
+  return {ok:true,msg:"Rostro identificado"};
+}
+
+function onFace(results){
+  if(!running)return;
+
+  const found=results.multiFaceLandmarks?.[0];
+  const check=validate(found);
+
+  if(!check.ok){
+    points=null;
+    resetScan(check.msg);
+    draw();
+    return;
+  }
+
+  points=found;
+  const now=performance.now();
+
+  // Estabilidad medida en unidades relativas al ancho facial.
+  const a=found[168],b=found[33],c=found[263];
+  const faceWidth=dist(b,c);
+  const sample={x:a.x,y:a.y,width:faceWidth};
+
+  let moving=false;
+  if(previousSample){
+    const dt=now-previousTime;
+    if(dt<600){
+      const delta=dist(sample,previousSample)/faceWidth;
+      moving=delta>.055;
+    }
+  }
+  previousSample=sample;
+  previousTime=now;
+
+  if(moving){
+    stableSince=now;
+    ready=false;
+    capture.disabled=true;
+    setMessage("Mantén la cabeza quieta");
+  }else{
+    if(!stableSince)stableSince=now;
+    const elapsed=now-stableSince;
+    const progress=clamp(elapsed/REQUIRED_MS*100,0,100);
+    $("scanFill").style.width=progress+"%";
+
+    if(progress>=100){
+      ready=true;
+      capture.disabled=false;
+      $("status").textContent="Visajismo activo";
+      $("instruction").textContent="Diseño disponible";
+      setMessage("Escaneo completado");
+    }else{
+      ready=false;
+      capture.disabled=true;
+      $("status").textContent="Analizando facciones";
+      setMessage("Identificando estructura facial: "+
+        Math.floor(progress)+"%");
+    }
+  }
+  lastAccepted=now;
+  draw();
+}
+
+async function frameLoop(id){
+  if(inFlight)return;
+  inFlight=true;
+  try{
+    while(running&&id===session){
+      if(video.readyState>=2){
+        try{
+          await mesh.send({image:video});
+        }catch(e){
+          console.error(e);
+          resetScan("Error en lectura facial");
+        }
+      }
+      await new Promise(r=>requestAnimationFrame(r));
+    }
+  }finally{
+    inFlight=false;
+  }
+}
+
+// Coordenadas propias del rostro, orientadas según el eje ocular.
+function faceGeometry(w,h){
+  const P=i=>point(i,w,h);
+
+  const eyeL=P(33),eyeR=P(263);
+  const origin=mid(eyeL,eyeR);
+  const d=dist(eyeL,eyeR);
+
+  const ux={x:(eyeR.x-eyeL.x)/d,y:(eyeR.y-eyeL.y)/d};
+  const uy={x:-ux.y,y:ux.x};
+
+  // Hacer que el eje vertical apunte hacia la barbilla.
+  const chin=P(152);
+  if((chin.x-origin.x)*uy.x+(chin.y-origin.y)*uy.y<0){
+    uy.x*=-1;uy.y*=-1;
+  }
+
+  const local=p=>{
+    const dx=p.x-origin.x,dy=p.y-origin.y;
+    return {x:dx*ux.x+dy*ux.y,y:dx*uy.x+dy*uy.y};
   };
-
-  const vx={x:vy.y,y:-vy.x};
-
-  function local(point){
-    const dx=point.x-origin.x;
-    const dy=point.y-origin.y;
-    return {
-      x:dx*vx.x+dy*vx.y,
-      y:dx*vy.x+dy*vy.y
-    };
-  }
-
-  function world(x,y){
-    return {
-      x:origin.x+x*vx.x+y*vy.x,
-      y:origin.y+x*vx.y+y*vy.y
-    };
-  }
-
-  return {p,local,world,len,forehead,chin};
+  const world=p=>({
+    x:origin.x+p.x*ux.x+p.y*uy.x,
+    y:origin.y+p.x*ux.y+p.y*uy.y
+  });
+  const L=i=>local(P(i));
+  return {P,L,local,world,d};
 }
 
-function intersectAtY(a,b,y){
-  const d=b.y-a.y;
-  if(Math.abs(d)<0.001)return b.x;
-  return a.x+(y-a.y)*(b.x-a.x)/d;
-}
-
-function createGeometry(pts,w,h){
-  const face=makeFaceSpace(pts,w,h);
-  const L=i=>face.local(face.p(i));
-
-  const browSides=[
+function eyebrowData(g){
+  // Contornos anatómicos aproximados reportados por Face Mesh.
+  const configs=[
     {
       upper:[70,63,105,66,107],
       lower:[46,53,52,65,55],
-      nostril:98,
-      eyeOuter:33,
+      nostril:98,outerEye:33,
       iris:[468,469,470,471,472]
     },
     {
       upper:[300,293,334,296,336],
       lower:[276,283,282,295,285],
-      nostril:327,
-      eyeOuter:263,
+      nostril:327,outerEye:263,
       iris:[473,474,475,476,477]
     }
   ];
 
-  const cupid=L(13);
+  return configs.map(c=>{
+    const upper=c.upper.map(g.L);
+    const lower=c.lower.map(g.L);
+    const coords=[...upper,...lower];
 
-  const sides=browSides.map(cfg=>{
-    const upper=cfg.upper.map(L);
-    const lower=cfg.lower.map(L);
-    const all=[...upper,...lower];
+    const centerX=avg(coords.map(p=>p.x));
+    const sign=centerX<0?-1:1;
+    const y=avg(coords.map(p=>p.y));
 
-    const center=average(all.map(p=>p.x));
-    const sign=center<0?-1:1;
+    const inner=coords.reduce((a,p)=>
+      Math.abs(p.x)<Math.abs(a.x)?p:a
+    );
+    const outer=coords.reduce((a,p)=>
+      Math.abs(p.x)>Math.abs(a.x)?p:a
+    );
 
-    const browY=average(all.map(p=>p.y));
-    const topY=average(upper.map(p=>p.y));
-    const bottomY=average(lower.map(p=>p.y));
-
-    const nose=L(cfg.nostril);
-    const eye=L(cfg.eyeOuter);
+    const top=avg(upper.map(p=>p.y));
+    const bottom=avg(lower.map(p=>p.y));
+    const thickness=Math.abs(bottom-top);
 
     const iris={
-      x:average(cfg.iris.map(i=>L(i).x)),
-      y:average(cfg.iris.map(i=>L(i).y))
+      x:avg(c.iris.map(i=>g.L(i).x)),
+      y:avg(c.iris.map(i=>g.L(i).y))
     };
-
-    const naturalXs=all.map(p=>Math.abs(p.x));
-    const inner=Math.min(...naturalXs);
-    const outer=Math.max(...naturalXs);
-
-    // Inicio: vertical paralela al eje central.
-    const startX=Math.abs(nose.x);
-
-    // Altura: prolongación nariz -> exterior del iris.
-    const archX=Math.abs(intersectAtY(nose,iris,browY));
-
-    // Final: prolongación arco de Cupido -> comisura ocular.
-    const endX=Math.abs(intersectAtY(cupid,eye,browY));
 
     return {
-      sign,nose,eye,iris,cupid,
-      inner,outer,browY,topY,bottomY,
-      startX,archX,endX,
-      upper,lower
+      upper,lower,coords,sign,y,
+      inner,outer,thickness,
+      nose:g.L(c.nostril),
+      eye:g.L(c.outerEye),
+      iris
     };
   });
-
-  // Una única forma 2D común para ambas cejas.
-  const naturalInner=average(sides.map(s=>s.inner));
-  const naturalOuter=average(sides.map(s=>s.outer));
-
-  const noseStart=average(sides.map(s=>s.startX));
-  const irisArch=average(sides.map(s=>s.archX));
-  const cupidEnd=average(sides.map(s=>s.endX));
-
-  const width=Math.max(
-    naturalOuter-naturalInner,
-    face.len*0.13
-  );
-
-  const minX=Math.max(0,naturalInner-width*0.12);
-  const maxX=naturalOuter+width*0.12;
-
-  const start=clamp(
-    naturalInner*0.35+noseStart*0.65,
-    minX,
-    naturalInner+width*0.28
-  );
-
-  const end=clamp(
-    naturalOuter*0.35+cupidEnd*0.65,
-    naturalInner+width*0.68,
-    maxX
-  );
-
-  const arch=clamp(
-    irisArch,
-    start+(end-start)*0.45,
-    start+(end-start)*0.82
-  );
-
-  const centerY=average(sides.map(s=>s.browY));
-
-  // Grosor estimado por ambas cejas naturales.
-  const thickness=clamp(
-    average(sides.map(s=>s.bottomY-s.topY)),
-    face.len*0.012,
-    face.len*0.045
-  );
-
-  return {
-    face,sides,
-    start,arch,end,centerY,thickness,
-    faceLength:face.len
-  };
 }
 
-function line(ctx,a,b,color,width=1.5,dash=[]){
-  ctx.save();
-  ctx.strokeStyle=color;
-  ctx.lineWidth=width;
-  ctx.setLineDash(dash);
+function crossing(a,b,y){
+  if(Math.abs(b.y-a.y)<1e-5)return b.x;
+  return a.x+(y-a.y)*(b.x-a.x)/(b.y-a.y);
+}
+
+function compute(w,h){
+  if(!points)return null;
+  const g=faceGeometry(w,h);
+  const brows=eyebrowData(g);
+  const cupid=g.L(13);
+
+  const startNatural=avg(brows.map(b=>Math.abs(b.inner.x)));
+  const endNatural=avg(brows.map(b=>Math.abs(b.outer.x)));
+  const browY=avg(brows.map(b=>b.y));
+
+  const noseStart=avg(brows.map(b=>Math.abs(b.nose.x)));
+  const archFromIris=avg(brows.map(b=>
+    Math.abs(crossing(b.nose,b.iris,b.y))
+  ));
+  const endFromEye=avg(brows.map(b=>
+    Math.abs(crossing(cupid,b.eye,b.y))
+  ));
+
+  const width=Math.max(endNatural-startNatural,g.d*.25);
+
+  const start=clamp(
+    noseStart*.65+startNatural*.35,
+    Math.max(0,startNatural-width*.12),
+    startNatural+width*.2
+  );
+  const end=clamp(
+    endFromEye*.65+endNatural*.35,
+    start+width*.65,
+    endNatural+width*.2
+  );
+  const arch=clamp(
+    archFromIris,
+    start+(end-start)*.48,
+    start+(end-start)*.80
+  );
+
+  const thickness=clamp(
+    avg(brows.map(b=>b.thickness)),
+    g.d*.018,g.d*.075
+  );
+
+  return {g,brows,cupid,start,arch,end,browY,thickness};
+}
+
+function line(ctx,a,b,color,width=2){
   ctx.beginPath();
   ctx.moveTo(a.x,a.y);
   ctx.lineTo(b.x,b.y);
+  ctx.strokeStyle=color;
+  ctx.lineWidth=width;
   ctx.stroke();
-  ctx.restore();
 }
-
 function dot(ctx,p,color,r=3){
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.arc(p.x,p.y,r,0,Math.PI*2);
-  ctx.fill();
+  ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);
+  ctx.fillStyle=color;ctx.fill();
 }
-
-function drawGuides(ctx,g){
-  const {face,sides,faceLength}=g;
-  const world=face.world;
-
-  const ext=faceLength*0.45;
-  const gold="#f3d39a";
-  const white="#ffffff";
-  const blue="#8fe6ff";
-
-  // Eje central, prolongado hasta la frente.
-  line(
-    ctx,
-    world(0,-faceLength*0.47),
-    world(0,faceLength*0.54),
-    gold,2.2
-  );
-
-  for(const s of sides){
-    const sign=s.sign;
-
-    // Línea vertical de inicio.
-    const x=sign*s.startX;
-    line(
-      ctx,
-      world(x,-faceLength*0.48),
-      world(x,faceLength*0.28),
-      white,1.8
-    );
-
-    // Línea diagonal de altura: nariz -> iris.
-    const dx=s.iris.x-s.nose.x;
-    const dy=s.iris.y-s.nose.y;
-    const length=Math.hypot(dx,dy)||1;
-
-    const ux=dx/length;
-    const uy=dy/length;
-
-    line(
-      ctx,
-      world(s.nose.x-ux*15,s.nose.y-uy*15),
-      world(s.iris.x+ux*ext,s.iris.y+uy*ext),
-      gold,1.9
-    );
-
-    // Línea diagonal final: labio superior -> ojo.
-    const ex=s.eye.x-s.cupid.x;
-    const ey=s.eye.y-s.cupid.y;
-    const el=Math.hypot(ex,ey)||1;
-
-    line(
-      ctx,
-      world(s.cupid.x,s.cupid.y),
-      world(s.eye.x+(ex/el)*ext,
-            s.eye.y+(ey/el)*ext),
-      blue,1.9
-    );
-
-    const sy=intersectAtY(s.nose,s.iris,s.browY);
-    const ty=intersectAtY(s.cupid,s.eye,s.browY);
-
-    dot(ctx,world(x,s.browY),white,4);
-    dot(ctx,world(sy,s.browY),gold,4);
-    dot(ctx,world(ty,s.browY),blue,4);
+function chain(ctx,arr,color){
+  for(let i=1;i<arr.length;i++){
+    line(ctx,arr[i-1],arr[i],color,1.3);
   }
 }
 
-// Contorno de diseño propuesto:
-// misma geometría reflejada para ambas cejas.
-function makeBrowPath(g,sign){
-  const {face,start,arch,end,centerY,thickness}=g;
-  const P=(x,y)=>face.world(sign*x,y);
+// Dibujar las referencias identificadas, ANTES del diseño.
+function drawDetection(ctx,c){
+  const g=c.g;
 
-  const lift=thickness*0.23;
-  const top=centerY-thickness*0.52;
-  const bottom=centerY+thickness*0.45;
-  const topArch=top-lift;
-  const bottomArch=bottom-lift*0.35;
-  const tailY=centerY-thickness*0.15;
+  // Contorno de las cejas identificado por el modelo.
+  for(const b of c.brows){
+    const upper=b.upper.map(g.world);
+    const lower=b.lower.map(g.world);
+
+    chain(ctx,upper,"#83ffbd");
+    chain(ctx,lower,"#83ffbd");
+
+    for(const p of [...upper,...lower])
+      dot(ctx,p,"#83ffbd",2.5);
+
+    dot(ctx,g.world(b.nose),"#ffe19c",4);
+    dot(ctx,g.world(b.iris),"#88dfff",4);
+    dot(ctx,g.world(b.eye),"#ffb5dc",4);
+  }
+
+  dot(ctx,g.P(1),"#fff",4);
+  dot(ctx,g.P(13),"#fff",4);
+  dot(ctx,g.P(152),"#fff",4);
+
+  // Puntos del eje facial.
+  line(ctx,g.P(10),g.P(152),"#ffffff90",1);
+}
+
+// Recta extendida desde un punto hasta más allá del segundo.
+function ray(ctx,a,b,extend,color){
+  const dx=b.x-a.x,dy=b.y-a.y;
+  const len=Math.hypot(dx,dy)||1;
+  const vx=dx/len,vy=dy/len;
+
+  line(ctx,
+    {x:a.x-vx*12,y:a.y-vy*12},
+    {x:b.x+vx*extend,y:b.y+vy*extend},
+    color,1.9
+  );
+}
+function drawGuides(ctx,c){
+  const {g,brows,cupid}=c;
+  const W=p=>g.world(p);
+
+  const top=g.L(10),chin=g.L(152);
+  const upperY=top.y-g.d*.10;
+
+  // Eje central.
+  line(ctx,W({x:0,y:upperY}),
+    W({x:0,y:chin.y}),"#f8d79e",2);
+
+  for(const b of brows){
+    // Inicio: recta paralela al eje facial.
+    const x=b.nose.x;
+    line(ctx,W({x,y:upperY}),
+      W({x,y:b.nose.y+g.d*.13}),"#ffffff",1.9);
+
+    // Altura: nariz y parte externa del iris.
+    ray(ctx,W(b.nose),W(b.iris),g.d*.45,"#f8d79e");
+
+    // Final: centro del labio superior y comisura externa ocular.
+    ray(ctx,W(cupid),W(b.eye),g.d*.45,"#8cddff");
+
+    dot(ctx,W({x,y:b.y}),"#ffffff",3);
+    dot(ctx,W({x:crossing(b.nose,b.iris,b.y),y:b.y}),
+      "#f8d79e",3);
+    dot(ctx,W({x:crossing(cupid,b.eye,b.y),y:b.y}),
+      "#8cddff",3);
+  }
+}
+
+// Misma geometría reflejada en ambos lados, sobre el plano de imagen.
+function browPath(c,sign){
+  const {g,start,arch,end,browY,thickness:t}=c;
+  const P=(x,y)=>g.world({x:sign*x,y});
+
+  const top=browY-t*.55;
+  const bottom=browY+t*.45;
+  const tip=browY-t*.12;
+  const high=top-t*.22;
 
   const path=new Path2D();
-  let a=P(start,top);
-  path.moveTo(a.x,a.y);
+  let a=P(start,top);path.moveTo(a.x,a.y);
 
-  let c=P(start+(arch-start)*0.65,top-lift*0.7);
-  let b=P(arch,topArch);
-  path.quadraticCurveTo(c.x,c.y,b.x,b.y);
+  let control=P(start+(arch-start)*.60,top-t*.15);
+  let b=P(arch,high);
+  path.quadraticCurveTo(control.x,control.y,b.x,b.y);
 
-  c=P(arch+(end-arch)*0.42,topArch);
-  b=P(end,tailY);
-  path.quadraticCurveTo(c.x,c.y,b.x,b.y);
+  control=P(arch+(end-arch)*.45,high);
+  b=P(end,tip);
+  path.quadraticCurveTo(control.x,control.y,b.x,b.y);
 
-  c=P(arch+(end-arch)*0.35,bottomArch);
-  b=P(arch,bottomArch);
-  path.quadraticCurveTo(c.x,c.y,b.x,b.y);
+  control=P(arch+(end-arch)*.42,bottom-t*.15);
+  b=P(arch,bottom-t*.12);
+  path.quadraticCurveTo(control.x,control.y,b.x,b.y);
 
-  c=P(start+(arch-start)*0.58,bottom);
+  control=P(start+(arch-start)*.50,bottom);
   b=P(start,bottom);
-  path.quadraticCurveTo(c.x,c.y,b.x,b.y);
+  path.quadraticCurveTo(control.x,control.y,b.x,b.y);
 
   path.closePath();
   return path;
 }
-
-function drawBrows(ctx,g){
+function drawDesign(ctx,c){
   for(const sign of [-1,1]){
-    const path=makeBrowPath(g,sign);
-
+    const path=browPath(c,sign);
     ctx.save();
-    ctx.fillStyle="rgba(72,35,26,0.28)";
-    ctx.strokeStyle="#fff7e8";
+    ctx.fillStyle="rgba(86,43,27,.30)";
+    ctx.strokeStyle="#fff9e7";
     ctx.lineWidth=2;
-    ctx.shadowColor="rgba(0,0,0,.6)";
-    ctx.shadowBlur=3;
-
-    ctx.fill(path);
-    ctx.stroke(path);
+    ctx.fill(path);ctx.stroke(path);
     ctx.restore();
+  }
+}
+function drawResult(ctx,c){
+  drawGuides(ctx,c);
+  drawDesign(ctx,c);
+}
 
-    const p=g.face.world(
-      sign*g.arch,
-      g.centerY-g.thickness*0.75
-    );
-    dot(ctx,p,"#f3d39a",3.5);
+function draw(){
+  const {w,h}=size();
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,w,h);
+  if(!points)return;
+
+  const c=compute(w,h);
+  if(!c)return;
+
+  if(ready){
+    drawResult(ctx,c);
+  }else{
+    drawDetection(ctx,c);
   }
 }
 
-function drawComposition(ctx,g){
-  if(!g)return;
-  drawGuides(ctx,g);
-  drawBrows(ctx,g);
+// Captura con las mismas proporciones visibles en pantalla.
+function videoToCanvas(ctx,w,h){
+  const m=mapping(w,h);
+  ctx.drawImage(video,
+    m.x,m.y,
+    video.videoWidth*m.scale,
+    video.videoHeight*m.scale
+  );
 }
 
-function drawLive(){
-  const {w,h}=screenSize();
-  const ctx=overlay.getContext("2d");
+// Lectura aproximada de luminosidad de zonas de mejillas.
+function skinEstimate(ctx,c){
+  const w=ctx.canvas.width,h=ctx.canvas.height;
+  const positions=[c.g.P(50),c.g.P(280)];
+  let values=[];
 
-  ctx.clearRect(0,0,w,h);
-
-  if(!detected || !landmarks)return;
-
-  geometry=createGeometry(landmarks,w,h);
-  drawComposition(ctx,geometry);
-}
-
-function drawVideoCover(ctx,w,h){
-  const vw=video.videoWidth;
-  const vh=video.videoHeight;
-  const scale=Math.max(w/vw,h/vh);
-
-  const sw=w/scale;
-  const sh=h/scale;
-  const sx=(vw-sw)/2;
-  const sy=(vh-sh)/2;
-
-  ctx.drawImage(video,sx,sy,sw,sh,0,0,w,h);
-}
-
-// Estimación de luminosidad a partir de regiones faciales.
-function estimateSkinTone(canvas,pts){
-  const ctx=canvas.getContext("2d",{willReadFrequently:true});
-  const w=canvas.width;
-  const h=canvas.height;
-  const mapping=cameraMapping(w,h);
-
-  const ids=[50,280,123,352];
-  const pixels=[];
-
-  for(const id of ids){
-    const lm=pts[id];
-    const x=Math.round(lm.x*video.videoWidth*mapping.scale+mapping.dx);
-    const y=Math.round(lm.y*video.videoHeight*mapping.scale+mapping.dy);
-
-    const size=9;
-    const sx=clamp(x-size,0,w-1);
-    const sy=clamp(y-size,0,h-1);
-    const sw=Math.min(size*2,w-sx);
-    const sh=Math.min(size*2,h-sy);
-
-    const data=ctx.getImageData(sx,sy,sw,sh).data;
+  for(const p of positions){
+    const x=Math.round(p.x),y=Math.round(p.y);
+    const sx=clamp(x-7,0,w-1);
+    const sy=clamp(y-7,0,h-1);
+    const data=ctx.getImageData(
+      sx,sy,Math.min(14,w-sx),Math.min(14,h-sy)
+    ).data;
 
     for(let i=0;i<data.length;i+=4){
       const r=data[i],g=data[i+1],b=data[i+2];
-      const max=Math.max(r,g,b);
-      const min=Math.min(r,g,b);
-
-      if(max>245 || max<15)continue;
-      if(max-min>115)continue;
-
-      const luminance=
-        0.2126*r+0.7152*g+0.0722*b;
-
-      pixels.push(luminance);
+      if(Math.min(r,g,b)<15||Math.max(r,g,b)>245)continue;
+      values.push(.2126*r+.7152*g+.0722*b);
     }
   }
 
-  if(!pixels.length)return "No determinado";
+  if(!values.length)return "No determinada";
+  values.sort((a,b)=>a-b);
+  const value=values[Math.floor(values.length/2)];
 
-  pixels.sort((a,b)=>a-b);
-  const median=pixels[Math.floor(pixels.length/2)];
-
-  if(median>=174)return "Claro (estimación)";
-  if(median>=105)return "Medio (estimación)";
-  return "Oscuro (estimación)";
+  if(value>175)return "Luminosidad alta";
+  if(value>105)return "Luminosidad media";
+  return "Luminosidad baja";
 }
 
-async function captureFace(){
-  if(!detected || !landmarks || !geometry || !stream)return;
-
-  if(performance.now()-lastFaceTime>800){
-    captureButton.disabled=true;
+function captureFace(){
+  if(!ready||!points||!running)return;
+  if(performance.now()-lastAccepted>500){
+    resetScan("Actualizando lectura facial");
     return;
   }
 
-  const pts=landmarks.map(p=>({...p}));
-  const {w,h}=screenSize();
+  const {w,h}=size();
+  const photo=document.createElement("canvas");
+  photo.width=Math.round(w);
+  photo.height=Math.round(h);
+  const ctx=photo.getContext("2d");
 
-  const scale=Math.min(2,1600/Math.max(w,h));
-  const cw=Math.round(w*scale);
-  const ch=Math.round(h*scale);
+  videoToCanvas(ctx,photo.width,photo.height);
 
-  capturedCanvas=document.createElement("canvas");
-  capturedCanvas.width=cw;
-  capturedCanvas.height=ch;
+  const c=compute(photo.width,photo.height);
+  if(!c)return;
 
-  const ctx=capturedCanvas.getContext("2d");
-  drawVideoCover(ctx,cw,ch);
+  const skin=skinEstimate(ctx,c);
+  drawResult(ctx,c);
 
-  const tone=estimateSkinTone(capturedCanvas,pts);
-
-  // Recalcular puntos para la resolución de la foto.
-  const capturedGeometry=createGeometry(pts,cw,ch);
-
-  drawComposition(ctx,capturedGeometry);
-
-  $("skinTone").textContent=tone;
-  $("pigment").textContent="Pendiente de tabla profesional";
-  $("duration").textContent="Pendiente de tabla profesional";
-
-  $("photo").src=capturedCanvas.toDataURL("image/jpeg",0.93);
+  $("photo").src=photo.toDataURL("image/jpeg",.94);
+  $("skin").textContent=skin;
 
   stopCamera();
   show("analysis");
-  runAnalysis();
+  analysisProgress();
 }
 
-function runAnalysis(){
-  const phases=[
-    "Identificando proporciones faciales...",
-    "Evaluando referencias de cejas naturales...",
-    "Construyendo propuesta simétrica...",
-    "Preparando resultado..."
-  ];
-
+function analysisProgress(){
   const start=performance.now();
-
   function update(now){
     if(!$("analysis").classList.contains("active"))return;
 
-    const elapsed=now-start;
-    const value=Math.min(100,Math.floor(elapsed/3000*100));
+    const progress=Math.min(100,(now-start)/30);
+    $("analysisFill").style.width=progress+"%";
+    $("percent").textContent=Math.floor(progress)+"%";
 
-    $("progress").style.width=value+"%";
-    $("percent").textContent=value+"%";
-    $("analysisText").textContent=
-      phases[Math.min(3,Math.floor(value/25))];
+    if(progress<34)
+      $("analysisText").textContent="Revisando estructura facial...";
+    else if(progress<67)
+      $("analysisText").textContent="Evaluando cejas naturales...";
+    else
+      $("analysisText").textContent="Preparando visajismo...";
 
-    if(elapsed<3000){
-      requestAnimationFrame(update);
-    }else{
-      $("progress").style.width="100%";
-      show("summary");
-    }
+    if(progress<100)requestAnimationFrame(update);
+    else show("summary");
   }
-
   requestAnimationFrame(update);
 }
-
 function newScan(){
-  capturedCanvas=null;
-  landmarks=null;
-  geometry=null;
   $("photo").removeAttribute("src");
-  $("progress").style.width="0%";
+  $("analysisFill").style.width="0%";
   $("percent").textContent="0%";
-  $("error").textContent="";
+  points=null;
+  resetScan();
   show("start");
 }
-
 window.addEventListener("resize",()=>{
-  if(running){
-    resizeOverlay();
-    drawLive();
-  }
+  if(running){resize();draw();}
 });
-
 window.addEventListener("pagehide",stopCamera);
-
 document.addEventListener("visibilitychange",()=>{
-  if(document.hidden && running){
+  if(document.hidden&&running){
     stopCamera();
     show("start");
   }
