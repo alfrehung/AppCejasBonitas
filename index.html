@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#18131b">
-<title>VISAGE 3.2 | Resumen de trabajo</title>
+<title>VISAGE 3.3 | Escaneo directo</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -18,7 +18,7 @@ body{margin:0;background:var(--bg);color:var(--white);
 button{cursor:pointer;font:inherit;border:0}
 .screen{display:none;min-height:100dvh}
 .screen.active{display:flex}
-#intro,#start,#analysis{
+#start,#analysis{
   flex-direction:column;align-items:center;justify-content:center;
   text-align:center;padding:28px;
   background:radial-gradient(circle at 50% 25%,#473340,var(--bg) 70%)
@@ -127,14 +127,7 @@ p{line-height:1.55;color:#ded0dc}
 </head>
 <body>
 
-<section id="intro" class="screen active">
-  <div class="logo">VISAGE</div>
-  <h1>Filtro de visajismo</h1>
-  <p>Lectura facial y líneas anatómicas para diseñar las cejas a mano.</p>
-  <button class="primary" onclick="show('start')">Comenzar</button>
-</section>
-
-<section id="start" class="screen">
+<section id="start" class="screen active">
   <div class="logo">VISAGE</div>
   <h1>Escaneo facial</h1>
   <p>
