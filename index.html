@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#18131b">
-<title>VISAGE 2.0 | Visajismo Facial</title>
+<title>VISAGE 2.1 | Guía de Visajismo</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -14,7 +14,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--white);
-  font-family:system-ui,-apple-system,Arial,sans-serif}
+  font-family:system-ui,-apple-system,Arial,sans-serif;overflow-x:hidden}
 button{cursor:pointer;font:inherit;border:0}
 .screen{display:none;min-height:100dvh}
 .screen.active{display:flex}
@@ -96,7 +96,7 @@ p{line-height:1.55;color:#ded0dc}
 }
 .card{
   max-width:480px;width:100%;background:var(--panel);
-  border-radius:15px;padding:19px;margin-top:18px
+  border-radius:15px;padding:19px;margin-top:18px;overflow-wrap:anywhere
 }
 .card h2{font-size:19px;color:var(--gold);margin:0 0 12px}
 table{width:100%;border-collapse:collapse}
@@ -109,8 +109,8 @@ small{color:#d7cbd5;line-height:1.5}
 
 <section id="intro" class="screen active">
   <div class="logo">VISAGE</div>
-  <h1>Diseño inteligente de cejas</h1>
-  <p>Lectura facial, análisis anatómico y visajismo asistido.</p>
+  <h1>Visajismo de cejas guiado</h1>
+  <p>Lectura facial y líneas anatómicas para diseñar las cejas a mano.</p>
   <button class="primary" onclick="show('start')">Comenzar</button>
 </section>
 
@@ -163,24 +163,26 @@ small{color:#d7cbd5;line-height:1.5}
 
 <section id="summary" class="screen">
   <div class="logo">VISAGE</div>
-  <h1>Diseño de cejas</h1>
-  <img id="photo" alt="Diseño de cejas sobre el rostro">
+  <h1>Guía de visajismo</h1>
+  <img id="photo" alt="Rostro con líneas de visajismo anatómico">
 
   <div class="card">
-    <h2>Visajismo facial</h2>
+    <h2>Referencias de visajismo</h2>
     <p>
-      Diseño bilateral simétrico calculado utilizando las
-      referencias anatómicas detectadas y las dimensiones
-      aproximadas de las cejas naturales.
+      Las siete líneas muestran el eje central (LC), los dos inicios
+      (PI), las dos alturas (PA) y los dos finales (PF).
+      Una pequeña marca transversal señala el cruce de cada PA
+      con el contorno superior estimado de la ceja, cuando es detectable.
     </p>
     <small>
-      Propuesta orientativa: comprueba el contorno real,
-      la asimetría facial y las proporciones antes de
-      realizar el procedimiento.
+      No se dibuja ninguna ceja artificial. La estudiante realiza
+      el diseño a mano usando las líneas como guía y comprobando
+      el nacimiento, arco y cola del vello real. Estas referencias
+      son aproximadas y requieren revisión profesional.
     </small>
   </div>
 
-  <div class="card">
+<div class="card">
     <h2>Análisis de pigmentación</h2>
     <table>
       <tr><td>Lectura visual de piel</td>
@@ -209,8 +211,8 @@ const canvas=$("overlay");
 const capture=$("capture");
 
 let mesh=null,stream=null,running=false;
-let inFlight=false,lastFrame=0;
-let points=null,latest=null,ready=false;
+let inFlight=false;
+let points=null,ready=false;
 let stableSince=0,previousSample=null,previousTime=0;
 let lastAccepted=0;
 let session=0;
@@ -221,7 +223,6 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const avg=a=>a.reduce((s,v)=>s+v,0)/a.length;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const mid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
-const mix=(a,b,t)=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
 
 function show(id){
   document.querySelectorAll(".screen").forEach(s=>
@@ -233,7 +234,6 @@ function setMessage(text){
 }
 function resetScan(message="Buscando rostro..."){
   ready=false;
-  latest=null;
   stableSince=0;
   previousSample=null;
   capture.disabled=true;
@@ -435,8 +435,8 @@ function onFace(results){
     if(progress>=100){
       ready=true;
       capture.disabled=false;
-      $("status").textContent="Visajismo activo";
-      $("instruction").textContent="Diseño disponible";
+      $("status").textContent="Guías activas";
+      $("instruction").textContent="Líneas listas: pulsa Dibujar";
       setMessage("Escaneo completado");
     }else{
       ready=false;
@@ -499,105 +499,37 @@ function faceGeometry(w,h){
   return {P,L,local,world,d};
 }
 
+// Usar referencias faciales únicamente para las líneas, nunca para dibujar cejas.
 function eyebrowData(g){
-  // Contornos anatómicos aproximados reportados por Face Mesh.
   const configs=[
-    {
-      upper:[70,63,105,66,107],
-      lower:[46,53,52,65,55],
-      nostril:98,outerEye:33,
-      iris:[468,469,470,471,472]
-    },
-    {
-      upper:[300,293,334,296,336],
-      lower:[276,283,282,295,285],
-      nostril:327,outerEye:263,
-      iris:[473,474,475,476,477]
-    }
+    {upper:[70,63,105,66,107], nostril:98, eye:33,
+     iris:[468,469,470,471,472]},
+    {upper:[300,293,334,296,336], nostril:327, eye:263,
+     iris:[473,474,475,476,477]}
   ];
-
-  return configs.map(c=>{
-    const upper=c.upper.map(g.L);
-    const lower=c.lower.map(g.L);
-    const coords=[...upper,...lower];
-
-    const centerX=avg(coords.map(p=>p.x));
-    const sign=centerX<0?-1:1;
-    const y=avg(coords.map(p=>p.y));
-
-    const inner=coords.reduce((a,p)=>
-      Math.abs(p.x)<Math.abs(a.x)?p:a
-    );
-    const outer=coords.reduce((a,p)=>
-      Math.abs(p.x)>Math.abs(a.x)?p:a
-    );
-
-    const top=avg(upper.map(p=>p.y));
-    const bottom=avg(lower.map(p=>p.y));
-    const thickness=Math.abs(bottom-top);
-
-    const iris={
-      x:avg(c.iris.map(i=>g.L(i).x)),
-      y:avg(c.iris.map(i=>g.L(i).y))
-    };
-
+  return configs.map(cfg=>{
+    const upper=cfg.upper.map(i=>g.L(i));
+    const sideX=avg(upper.map(p=>p.x));
     return {
-      upper,lower,coords,sign,y,
-      inner,outer,thickness,
-      nose:g.L(c.nostril),
-      eye:g.L(c.outerEye),
-      iris
+      upper,
+      sign:sideX<0?-1:1,
+      nose:g.L(cfg.nostril),
+      eye:g.L(cfg.eye),
+      iris:{
+        x:avg(cfg.iris.map(i=>g.L(i).x)),
+        y:avg(cfg.iris.map(i=>g.L(i).y))
+      }
     };
   });
-}
-
-function crossing(a,b,y){
-  if(Math.abs(b.y-a.y)<1e-5)return b.x;
-  return a.x+(y-a.y)*(b.x-a.x)/(b.y-a.y);
 }
 
 function compute(w,h){
   if(!points)return null;
   const g=faceGeometry(w,h);
   const brows=eyebrowData(g);
-  const cupid=g.L(13);
-
-  const startNatural=avg(brows.map(b=>Math.abs(b.inner.x)));
-  const endNatural=avg(brows.map(b=>Math.abs(b.outer.x)));
-  const browY=avg(brows.map(b=>b.y));
-
-  const noseStart=avg(brows.map(b=>Math.abs(b.nose.x)));
-  const archFromIris=avg(brows.map(b=>
-    Math.abs(crossing(b.nose,b.iris,b.y))
-  ));
-  const endFromEye=avg(brows.map(b=>
-    Math.abs(crossing(cupid,b.eye,b.y))
-  ));
-
-  const width=Math.max(endNatural-startNatural,g.d*.25);
-
-  const start=clamp(
-    noseStart*.65+startNatural*.35,
-    Math.max(0,startNatural-width*.12),
-    startNatural+width*.2
-  );
-  const end=clamp(
-    endFromEye*.65+endNatural*.35,
-    start+width*.65,
-    endNatural+width*.2
-  );
-  const arch=clamp(
-    archFromIris,
-    start+(end-start)*.48,
-    start+(end-start)*.80
-  );
-
-  const thickness=clamp(
-    avg(brows.map(b=>b.thickness)),
-    g.d*.018,g.d*.075
-  );
-
-  return {g,brows,cupid,start,arch,end,browY,thickness};
+  // Distancias PI simétricas respecto al eje central LC.
+  const piDistance=avg(brows.map(b=>Math.abs(b.nose.x)));
+  return {g,brows,cupid:g.L(13),piDistance};
 }
 
 function line(ctx,a,b,color,width=2){
@@ -607,43 +539,6 @@ function line(ctx,a,b,color,width=2){
   ctx.strokeStyle=color;
   ctx.lineWidth=width;
   ctx.stroke();
-}
-function dot(ctx,p,color,r=3){
-  ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);
-  ctx.fillStyle=color;ctx.fill();
-}
-function chain(ctx,arr,color){
-  for(let i=1;i<arr.length;i++){
-    line(ctx,arr[i-1],arr[i],color,1.3);
-  }
-}
-
-// Dibujar las referencias identificadas, ANTES del diseño.
-function drawDetection(ctx,c){
-  const g=c.g;
-
-  // Contorno de las cejas identificado por el modelo.
-  for(const b of c.brows){
-    const upper=b.upper.map(g.world);
-    const lower=b.lower.map(g.world);
-
-    chain(ctx,upper,"#83ffbd");
-    chain(ctx,lower,"#83ffbd");
-
-    for(const p of [...upper,...lower])
-      dot(ctx,p,"#83ffbd",2.5);
-
-    dot(ctx,g.world(b.nose),"#ffe19c",4);
-    dot(ctx,g.world(b.iris),"#88dfff",4);
-    dot(ctx,g.world(b.eye),"#ffb5dc",4);
-  }
-
-  dot(ctx,g.P(1),"#fff",4);
-  dot(ctx,g.P(13),"#fff",4);
-  dot(ctx,g.P(152),"#fff",4);
-
-  // Puntos del eje facial.
-  line(ctx,g.P(10),g.P(152),"#ffffff90",1);
 }
 
 // Recta extendida desde un punto hasta más allá del segundo.
@@ -658,84 +553,72 @@ function ray(ctx,a,b,extend,color){
     color,1.9
   );
 }
-function drawGuides(ctx,c){
-  const {g,brows,cupid}=c;
-  const W=p=>g.world(p);
+// Cruce real de la recta PA con los segmentos de referencia del borde
+// superior de ceja del modelo facial. Si no hay cruce, no pintar marca.
+function lineSegmentIntersection(a,b,c,d){
+  const rx=b.x-a.x, ry=b.y-a.y;
+  const sx=d.x-c.x, sy=d.y-c.y;
+  const den=rx*sy-ry*sx;
+  if(Math.abs(den)<1e-6)return null;
+  const qx=c.x-a.x, qy=c.y-a.y;
+  const t=(qx*sy-qy*sx)/den;
+  const u=(qx*ry-qy*rx)/den;
+  if(t<0.8||u<0||u>1)return null;
+  return {t,x:a.x+t*rx,y:a.y+t*ry};
+}
 
+function drawArchTick(ctx,c,b){
+  let hit=null;
+  for(let i=1;i<b.upper.length;i++){
+    const h=lineSegmentIntersection(
+      b.nose,b.iris,b.upper[i-1],b.upper[i]
+    );
+    if(h && (!hit||h.t<hit.t))hit=h;
+  }
+  if(!hit)return;
+
+  const p=c.g.world(hit);
+  const dx=b.iris.x-b.nose.x,dy=b.iris.y-b.nose.y;
+  const len=Math.hypot(dx,dy)||1;
+  const nx=-dy/len,ny=dx/len;
+  const half=clamp(c.g.d*.014,3,5);
+  line(ctx,
+    {x:p.x-nx*half,y:p.y-ny*half},
+    {x:p.x+nx*half,y:p.y+ny*half},
+    "#f8d79e",2.2
+  );
+}
+
+function drawGuides(ctx,c){
+  const {g,brows,cupid,piDistance}=c;
+  const W=p=>g.world(p);
   const top=g.L(10),chin=g.L(152);
   const upperY=top.y-g.d*.10;
 
-  // Eje central.
+  // LC: eje central del rostro.
   line(ctx,W({x:0,y:upperY}),
     W({x:0,y:chin.y}),"#f8d79e",2);
 
   for(const b of brows){
-    // Inicio: recta paralela al eje facial.
-    const x=b.nose.x;
+    // PI: dos verticales paralelas y equidistantes del eje.
+    const x=b.sign*piDistance;
     line(ctx,W({x,y:upperY}),
       W({x,y:b.nose.y+g.d*.13}),"#ffffff",1.9);
 
-    // Altura: nariz y parte externa del iris.
+    // PA: parte externa de la nariz -> exterior del iris.
     ray(ctx,W(b.nose),W(b.iris),g.d*.45,"#f8d79e");
 
-    // Final: centro del labio superior y comisura externa ocular.
+    // PF: arco de Cupido -> comisura ocular externa.
     ray(ctx,W(cupid),W(b.eye),g.d*.45,"#8cddff");
 
-    dot(ctx,W({x,y:b.y}),"#ffffff",3);
-    dot(ctx,W({x:crossing(b.nose,b.iris,b.y),y:b.y}),
-      "#f8d79e",3);
-    dot(ctx,W({x:crossing(cupid,b.eye,b.y),y:b.y}),
-      "#8cddff",3);
-  }
-}
-
-// Misma geometría reflejada en ambos lados, sobre el plano de imagen.
-function browPath(c,sign){
-  const {g,start,arch,end,browY,thickness:t}=c;
-  const P=(x,y)=>g.world({x:sign*x,y});
-
-  const top=browY-t*.55;
-  const bottom=browY+t*.45;
-  const tip=browY-t*.12;
-  const high=top-t*.22;
-
-  const path=new Path2D();
-  let a=P(start,top);path.moveTo(a.x,a.y);
-
-  let control=P(start+(arch-start)*.60,top-t*.15);
-  let b=P(arch,high);
-  path.quadraticCurveTo(control.x,control.y,b.x,b.y);
-
-  control=P(arch+(end-arch)*.45,high);
-  b=P(end,tip);
-  path.quadraticCurveTo(control.x,control.y,b.x,b.y);
-
-  control=P(arch+(end-arch)*.42,bottom-t*.15);
-  b=P(arch,bottom-t*.12);
-  path.quadraticCurveTo(control.x,control.y,b.x,b.y);
-
-  control=P(start+(arch-start)*.50,bottom);
-  b=P(start,bottom);
-  path.quadraticCurveTo(control.x,control.y,b.x,b.y);
-
-  path.closePath();
-  return path;
-}
-function drawDesign(ctx,c){
-  for(const sign of [-1,1]){
-    const path=browPath(c,sign);
-    ctx.save();
-    ctx.fillStyle="rgba(86,43,27,.30)";
-    ctx.strokeStyle="#fff9e7";
-    ctx.lineWidth=2;
-    ctx.fill(path);ctx.stroke(path);
-    ctx.restore();
+    // Guion transversal, no círculo, únicamente si hay cruce.
+    drawArchTick(ctx,c,b);
   }
 }
 function drawResult(ctx,c){
   drawGuides(ctx,c);
-  drawDesign(ctx,c);
 }
+
 
 function draw(){
   const {w,h}=size();
@@ -746,11 +629,8 @@ function draw(){
   const c=compute(w,h);
   if(!c)return;
 
-  if(ready){
-    drawResult(ctx,c);
-  }else{
-    drawDetection(ctx,c);
-  }
+  // No proyectar referencias hasta completar el escaneo.
+  if(ready)drawResult(ctx,c);
 }
 
 // Captura con las mismas proporciones visibles en pantalla.
@@ -834,9 +714,9 @@ function analysisProgress(){
     if(progress<34)
       $("analysisText").textContent="Revisando estructura facial...";
     else if(progress<67)
-      $("analysisText").textContent="Evaluando cejas naturales...";
+      $("analysisText").textContent="Comprobando referencias anatómicas...";
     else
-      $("analysisText").textContent="Preparando visajismo...";
+      $("analysisText").textContent="Preparando líneas de visajismo...";
 
     if(progress<100)requestAnimationFrame(update);
     else show("summary");
