@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#18131b">
-<title>VISAGE 2.2 | Guías faciales ancladas</title>
+<title>VISAGE 2.3 | Altura de referencia</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -172,7 +172,7 @@ small{color:#d7cbd5;line-height:1.5}
       Las guías incluyen el eje central (LC), los dos inicios (PI)
       estimados desde cada fosa nasal, dos diagonales de altura (PA),
       dos diagonales de final (PF) hacia el extremo ocular y
-      una horizontal que une las alturas de ambas cejas.
+      una horizontal perpendicular al eje central, referida a la ceja con el borde superior de vello más alto.
     </p>
     <small>
       Las guías se sujetan a referencias de la malla facial estimada
@@ -639,18 +639,16 @@ function intersection(a,b,c,d){
   if(t<.8||u<0||u>1)return null;
   return {t,x:a.x+t*rx,y:a.y+t*ry};
 }
-function archReference(b){
-  let hit=null;
-  for(let i=1;i<b.upper.length;i++){
-    const p=intersection(b.nose,b.iris,b.upper[i-1],b.upper[i]);
-    if(p&&(!hit||p.t<hit.t))hit=p;
+// Referencia del borde superior de ceja más elevado entre ambos lados.
+// Face Mesh aproxima el nacimiento del vello: no mide cada pelo.
+function highestBrowReference(brows){
+  let highest=null;
+  for(let side=0;side<brows.length;side++){
+    for(const p of brows[side].upper){
+      if(!highest || p.y<highest.y)highest={x:p.x,y:p.y,side};
+    }
   }
-  if(hit)return hit;
-  // Si no hay cruce con el contorno estimado, usar su altura media.
-  const y=avg(b.upper.map(p=>p.y));
-  const dy=b.iris.y-b.nose.y;
-  if(Math.abs(dy)<.001)return null;
-  return {x:b.nose.x+(y-b.nose.y)*(b.iris.x-b.nose.x)/dy,y};
+  return highest;
 }
 function atY(a,b,y){
   const dy=b.y-a.y;
@@ -694,15 +692,18 @@ function buildSurface(){
         "#8cddff",1.9);
   }
 
-  // Horizontal compartida a la altura media de ambos arcos.
-  const arches=brows.map(archReference);
-  if(arches.every(Boolean)){
-    const height=avg(arches.map(p=>p.y));
+  // Regla profesional: tomar el vello superior más alto (estimado)
+  // entre ambas cejas, NO promediar sus alturas.
+  const highest=highestBrowReference(brows);
+  if(highest){
+    // g.L usa un eje facial local: Y constante = escuadra con LC.
+    const height=highest.y;
     const left=atY(brows[0].nose,brows[0].iris,height);
     const right=atY(brows[1].nose,brows[1].iris,height);
     if(left&&right){
+      // Línea de altura perpendicular a LC, compartida por ambos PA.
       add(left,right,"#9cf0d2",1.7);
-      // Sólo pequeñas marcas transversales, nunca puntos.
+      // Marcas transversales discretas, sin círculos ni cejas falsas.
       for(const brow of brows){
         const p=atY(brow.nose,brow.iris,height);
         if(!p)continue;
