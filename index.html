@@ -634,6 +634,18 @@ function onFace(results){
   trackingLossSince=0;
 
   if(wasTracking){
+    // Comprobar de nuevo TODAS las referencias anatómicas del rostro
+    // actual. Nunca habilitar Dibujar con un mapa fuera de posición.
+    const freshMap=buildSurface();
+    if(!freshMap){
+      capture.disabled=true;
+      $("status").textContent="Ajustando referencias";
+      $("instruction").textContent="Centra el rostro para recuperar las guías";
+      setMessage("Lectura facial insuficiente");
+      draw();
+      return;
+    }
+    surface=freshMap;
     capture.disabled=false;
     $("scanFill").style.width="100%";
     $("status").textContent="Seguimiento activo";
@@ -718,8 +730,8 @@ function faceGeometry(w,h){
   const d=dist(leftEye,rightEye);
   if(!Number.isFinite(d)||d<1)return null;
 
-  // El eje del puente nasal al arco de Cupido es más representativo
-  // del centro visible del rostro que la media de las comisuras oculares.
+  // Aproximación del eje desde referencias centrales del puente y labio.
+  // Se recalcula en cada frame; no presupone simetría perfecta.
   let axis={x:cupid.x-bridge.x,y:cupid.y-bridge.y};
   let length=Math.hypot(axis.x,axis.y);
   if(length<d*.18){
@@ -927,7 +939,8 @@ function draw(){
   const {w,h}=size();
   const ctx=canvas.getContext("2d");
   ctx.clearRect(0,0,w,h);
-  if(ready&&points&&surface)drawSurface(ctx,w,h);
+  if(ready&&points&&surface && !capture.disabled)
+    drawSurface(ctx,w,h,surface);
 }
 
 // Captura con las mismas proporciones visibles en pantalla.
@@ -1000,7 +1013,8 @@ function captureFace(){
   if(!c)return;
 
   const skin=skinEstimate(ctx,c);
-  if(!drawSurface(ctx,photo.width,photo.height)){
+  const captureMap=buildSurface(photo.width,photo.height);
+  if(!captureMap || !drawSurface(ctx,photo.width,photo.height,captureMap)){
     capture.disabled=true;
     $("instruction").textContent="Ajusta la posición del rostro";
     return;
