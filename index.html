@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#18131b">
-<title>VISAGE 2.3 | Altura de referencia</title>
+<title>VISAGE 3.0 | Filtro de visajismo</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -109,7 +109,7 @@ small{color:#d7cbd5;line-height:1.5}
 
 <section id="intro" class="screen active">
   <div class="logo">VISAGE</div>
-  <h1>Visajismo de cejas guiado</h1>
+  <h1>Filtro de visajismo</h1>
   <p>Lectura facial y líneas anatómicas para diseñar las cejas a mano.</p>
   <button class="primary" onclick="show('start')">Comenzar</button>
 </section>
@@ -131,7 +131,7 @@ small{color:#d7cbd5;line-height:1.5}
   <canvas id="overlay"></canvas>
 
   <div class="top">
-    <strong>VISAGE · LECTOR FACIAL</strong>
+    <strong>VISAGE · MAPA FACIAL</strong>
     <span id="status" class="chip">Iniciando...</span>
   </div>
 
@@ -163,7 +163,7 @@ small{color:#d7cbd5;line-height:1.5}
 
 <section id="summary" class="screen">
   <div class="logo">VISAGE</div>
-  <h1>Guía de visajismo</h1>
+  <h1>Mapa de visajismo</h1>
   <img id="photo" alt="Rostro con líneas de visajismo anatómico">
 
   <div class="card">
@@ -667,10 +667,10 @@ function buildSurface(){
   const {g,brows,cupid,piDistance}=c;
   const W=p=>g.world(p);
   const forehead=g.L(10),chin=g.L(152);
-  const topY=forehead.y+g.d*.055;
+  const topY=forehead.y+g.d*.04;
   const specs=[];
   const add=(a,b,color,width=1.9)=>{
-    specs.push({a:W(a),b:W(b),color,width});
+    specs.push({a:W(a),b:W(b),color:"#e875d2",width});
   };
 
   // LC desde la frente hasta la barbilla.
@@ -725,6 +725,22 @@ function buildSurface(){
       .map(p=>anchorAt(p,vertices,triangles));
     return {color:s.color,width:s.width,anchors};
   });
+  // Etiquetas simples, sin puntos circulares y ancladas a la malla.
+  const labelY=highest ? highest.y : avg(brows.map(b=>
+    avg(b.upper.map(p=>p.y))
+  ));
+  mapped.labels=[];
+  const putLabel=(name,local)=>{
+    const anchor=anchorAt(W(local),vertices,triangles);
+    if(anchor)mapped.labels.push({name,anchor});
+  };
+  for(const b of brows){
+    putLabel("INICIO",{x:b.sign*piDistance,y:labelY-g.d*.075});
+    const arch=atY(b.nose,b.iris,labelY);
+    if(arch)putLabel("ARCO",{x:arch.x,y:arch.y-g.d*.065});
+    const tail=atY(cupid,b.eye,labelY);
+    if(tail)putLabel("FINAL",{x:tail.x,y:tail.y-g.d*.06});
+  }
   // Evitar presentar líneas sueltas como si hubiese una lectura válida.
   const complete=mapped.filter(s=>
     s.anchors.filter(Boolean).length>=s.anchors.length*.45
@@ -738,6 +754,7 @@ function drawSurface(ctx,w,h){
   ctx.save();
   ctx.lineCap="round";
   ctx.lineJoin="round";
+  ctx.setLineDash([5,4]);
   for(const stroke of surface){
     ctx.strokeStyle=stroke.color;
     ctx.lineWidth=stroke.width;
@@ -747,12 +764,28 @@ function drawSurface(ctx,w,h){
       if(!anchor){active=false;continue;}
       const {ids,weights}=anchor;
       const a=vertices[ids[0]],b=vertices[ids[1]],c=vertices[ids[2]];
+      if(!a||!b||!c){active=false;continue;}
       const x=a.x*weights[0]+b.x*weights[1]+c.x*weights[2];
       const y=a.y*weights[0]+b.y*weights[1]+c.y*weights[2];
       if(!active){ctx.moveTo(x,y);active=true;}
       else ctx.lineTo(x,y);
     }
     ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.fillStyle="#83f3dc";
+  ctx.textAlign="center";
+  ctx.textBaseline="bottom";
+  ctx.font="600 9px system-ui,-apple-system,sans-serif";
+  ctx.shadowColor="#2f1231";
+  ctx.shadowBlur=3;
+  for(const lab of (surface.labels||[])){
+    const {ids,weights}=lab.anchor;
+    const a=vertices[ids[0]],b=vertices[ids[1]],c=vertices[ids[2]];
+    if(!a||!b||!c)continue;
+    const x=a.x*weights[0]+b.x*weights[1]+c.x*weights[2];
+    const y=a.y*weights[0]+b.y*weights[1]+c.y*weights[2];
+    ctx.fillText(lab.name,x,y);
   }
   ctx.restore();
 }
