@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#18131b">
-<title>VISAGE 3.0 | Filtro de visajismo</title>
+<title>VISAGE 3.1 | Seguimiento estable</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -218,9 +218,16 @@ let surface=null;
 let triangulation=null;
 let stableSince=0,previousSample=null,previousTime=0;
 let lastAccepted=0;
+let trackingLossSince=0;
 let session=0;
 
 const REQUIRED_MS=2000;
+// Histeresis: no reiniciar calibración por un solo fotograma malo.
+const SCAN_GAP_MS=400;
+// Mantener la última proyección durante un parpadeo del detector.
+const TRACK_HOLD_MS=180;
+// Si no hay lectura fiable, ocultar guías pero conservar calibración.
+const TRACK_RESCAN_MS=6500;
 const MODEL="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/";
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const avg=a=>a.reduce((s,v)=>s+v,0)/a.length;
@@ -240,6 +247,7 @@ function resetScan(message="Buscando rostro..."){
   surface=null;
   stableSince=0;
   previousSample=null;
+  trackingLossSince=0;
   capture.disabled=true;
   $("scanFill").style.width="0%";
   $("status").textContent="Escaneando";
@@ -344,85 +352,132 @@ function stopCamera(){
 
 // Verificación de pose, encuadre y estabilidad.
 // No constituye una medida clínica de precisión.
+// Validación con dos etapas: estricta para calibrar y tolerante
+// para seguir el rostro una vez ancladas las líneas.
 function validate(p){
-  if(!p||p.length<478)
-    return {ok:false,msg:"No se detectan todos los puntos faciales"};
+  const tracking=ready&&!!surface;
+  if(!p || p.length<(tracking?468:478))
+    return {ok:false,msg:"Buscando referencias del rostro"};
 
   const f=i=>p[i];
   const left=f(33),right=f(263),nose=f(1);
   const forehead=f(10),chin=f(152);
   const eyeWidth=dist(left,right);
   const height=dist(forehead,chin);
-
-  if(!eyeWidth||!height)
+  if(!eyeWidth || !height)
     return {ok:false,msg:"Referencias faciales insuficientes"};
 
-  // El rostro debe ocupar una proporción adecuada.
-  if(height<.32 || eyeWidth<.14)
+  if(height<(tracking?.20:.32) || eyeWidth<(tracking?.09:.14))
     return {ok:false,msg:"Acerca el teléfono al rostro"};
 
-  const bounds=[10,152,234,454,33,263,70,300,98,327,13];
+  // Antes de calibrar exigimos cara completa. Durante seguimiento
+  // permitimos que los bordes salgan parcialmente del encuadre,
+  // pero no aceptamos landmarks totalmente fuera de imagen.
+  const bounds=tracking?[1,33,263,168]:[10,152,234,454,33,263,70,300,98,327,13];
+  const margin=tracking?.06:.035;
   if(bounds.some(i=>
-    f(i).x<.035||f(i).x>.965||
-    f(i).y<.035||f(i).y>.965
-  ))return {ok:false,msg:"Centra el rostro completo"};
+    !Number.isFinite(f(i).x) || !Number.isFinite(f(i).y) ||
+    f(i).x< -margin || f(i).x>1+margin ||
+    f(i).y< -margin || f(i).y>1+margin
+  ))return {ok:false,msg:"Vuelve a centrar el rostro"};
 
-  // Ángulo lateral aproximado usando la nariz y los ojos.
-  const leftD=dist(nose,left);
-  const rightD=dist(nose,right);
+  const leftD=dist(nose,left),rightD=dist(nose,right);
   const yaw=leftD/(leftD+rightD);
+  // Más tolerancia al giro una vez anclada la malla.
+  if(yaw<(tracking?.18:.38)||yaw>(tracking?.82:.62))
+    return {ok:false,msg:"Gira un poco hacia la cámara"};
 
-  // Durante la calibración exigimos frontalidad; una vez anclada
-  // la malla permitimos giros moderados sin perder el trazado.
-  const yawMin=ready?.29:.38, yawMax=ready?.71:.62;
-  if(yaw<yawMin||yaw>yawMax)
-    return {ok:false,msg:"Vuelve a mirar hacia la cámara"};
+  const roll=Math.atan2(right.y-left.y,right.x-left.x)*180/Math.PI;
+  const correctedRoll=Math.min(Math.abs(roll),Math.abs(180-Math.abs(roll)));
+  if(correctedRoll>(tracking?35:12))
+    return {ok:false,msg:"Alinea ligeramente la cabeza"};
 
-  // Inclinación lateral de los ojos.
-  const roll=Math.abs(
-    Math.atan2(right.y-left.y,right.x-left.x)*180/Math.PI
-  );
-  const correctedRoll=Math.min(roll,Math.abs(180-roll));
-
-  if(correctedRoll>(ready?22:12))
-    return {ok:false,msg:"Endereza ligeramente la cabeza"};
-
-  // La separación entre párpados debe permitir localizar los ojos.
-  const eyeA=dist(f(159),f(145));
-  const eyeB=dist(f(386),f(374));
-  if(eyeA<eyeWidth*.012||eyeB<eyeWidth*.012)
-    return {ok:false,msg:"Mantén ambos ojos abiertos"};
+  // Parpadear es normal; no invalidar el seguimiento por eso.
+  if(!tracking){
+    const eyeA=dist(f(159),f(145)),eyeB=dist(f(386),f(374));
+    if(eyeA<eyeWidth*.012||eyeB<eyeWidth*.012)
+      return {ok:false,msg:"Mantén ambos ojos abiertos"};
+  }
 
   return {ok:true,msg:"Rostro identificado"};
 }
 
 function onFace(results){
   if(!running)return;
+
+  const now=performance.now();
   const found=results.multiFaceLandmarks?.[0];
   const check=validate(found);
+
   if(!check.ok){
+    capture.disabled=true;
+
+    if(ready && surface){
+      if(!trackingLossSince)trackingLossSince=now;
+      const gap=now-lastAccepted;
+
+      // La calibración se conserva aun cuando el detector
+      // pierde varios fotogramas seguidos al girar el rostro.
+      if(gap>TRACK_RESCAN_MS){
+        points=null;
+        resetScan("Rostro perdido. Vuelve a mirar de frente");
+      }else{
+        if(gap>TRACK_HOLD_MS)points=null;
+        $("scanFill").style.width="100%";
+        $("status").textContent="Seguimiento en pausa";
+        $("instruction").textContent="Vuelve a encuadrar; no hace falta escanear otra vez";
+        setMessage(check.msg);
+      }
+      draw();
+      return;
+    }
+
+    // En calibración toleramos pequeñas pérdidas de detección;
+    // antes se borraba todo el progreso con un único frame fallido.
+    if(lastAccepted && now-lastAccepted>SCAN_GAP_MS &&
+       (stableSince || previousSample)){
+      resetScan(check.msg);
+    }else{
+      setMessage(check.msg);
+    }
     points=null;
-    resetScan(check.msg);
     draw();
     return;
   }
-  points=found;
-  const now=performance.now();
-  lastAccepted=now;
 
-  // Tras calibrar, los trazos conservan anclajes baricéntricos
-  // en la malla y se proyectan usando las referencias de cada frame.
-  if(ready && surface){
+  const previous=points;
+  const wasTracking=ready && !!surface;
+  const gap=now-lastAccepted;
+
+  // Suavizado moderado para disminuir vibraciones sin dejar
+  // de seguir los desplazamientos reales de la cabeza.
+  if(wasTracking && previous && gap<350 &&
+     previous.length===found.length){
+    const factor=.74;
+    points=found.map((p,i)=>({
+      x:previous[i].x+(p.x-previous[i].x)*factor,
+      y:previous[i].y+(p.y-previous[i].y)*factor,
+      z:previous[i].z+(p.z-previous[i].z)*factor
+    }));
+  }else{
+    points=found;
+  }
+
+  lastAccepted=now;
+  trackingLossSince=0;
+
+  if(wasTracking){
     capture.disabled=false;
     $("scanFill").style.width="100%";
-    $("status").textContent="Malla siguiendo el rostro";
-    $("instruction").textContent="Guías activas: pulsa Dibujar";
-    setMessage("Seguimiento facial activo");
+    $("status").textContent="Seguimiento activo";
+    $("instruction").textContent="Guías listas: pulsa Dibujar";
+    setMessage("Mapa facial en seguimiento");
     draw();
     return;
   }
 
-  const a=found[168], b=found[33], c=found[263];
+  // Calibración inicial, únicamente una vez por sesión estable.
+  const a=found[168],b=found[33],c=found[263];
   const width=dist(b,c)||1;
   const sample={x:a.x,y:a.y};
   let moving=false;
@@ -444,8 +499,8 @@ function onFace(results){
   if(!stableSince)stableSince=now;
   const progress=clamp((now-stableSince)/REQUIRED_MS*100,0,100);
   $("scanFill").style.width=progress+"%";
-  $("status").textContent="Leyendo superficie facial";
-  setMessage("Calibrando facciones: "+Math.floor(progress)+"%");
+  $("status").textContent="Calibración facial";
+  setMessage("Reconociendo facciones: "+Math.floor(progress)+"%");
 
   if(progress>=100){
     const built=buildSurface();
@@ -453,11 +508,11 @@ function onFace(results){
       surface=built;
       ready=true;
       capture.disabled=false;
-      $("status").textContent="Guías ancladas";
-      $("instruction").textContent="Líneas listas: pulsa Dibujar";
-      setMessage("Escaneo facial completado");
+      $("status").textContent="Seguimiento activo";
+      $("instruction").textContent="Guías listas: pulsa Dibujar";
+      setMessage("Escaneo completo: mueve suavemente el rostro");
     }else{
-      resetScan("No se logró calibrar la malla. Reencuadra el rostro");
+      resetScan("No se logró calibrar la malla; vuelve a centrar el rostro");
     }
   }
   draw();
@@ -473,7 +528,7 @@ async function frameLoop(id){
           await mesh.send({image:video});
         }catch(e){
           console.error(e);
-          resetScan("Error en lectura facial");
+          onFace({multiFaceLandmarks:[]});
         }
       }
       await new Promise(r=>requestAnimationFrame(r));
@@ -844,7 +899,9 @@ function skinEstimate(ctx,c){
 function captureFace(){
   if(!ready||!points||!running)return;
   if(performance.now()-lastAccepted>500){
-    resetScan("Actualizando lectura facial");
+    capture.disabled=true;
+    $("status").textContent="Buscando lectura reciente";
+    $("instruction").textContent="Vuelve a encuadrar para capturar";
     return;
   }
 
