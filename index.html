@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="./assets/visage-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-180.png">
 <link rel="manifest" href="./manifest.webmanifest">
-<title>VISAGE 4.0 | Lectura facial dinámica</title>
+<title>VISAGE 4.1 | Iris anatómico</title>
 <style>
 :root{
   --bg:#18131b;--gold:#e9c99c;
@@ -722,7 +722,11 @@ async function frameLoop(id){
 // Nunca utilizamos el punto medio de los ojos como eje anatómico.
 function faceGeometry(w,h){
   const P=i=>point(i,w,h);
-  const bridge=P(168);           // entre los ojos, sobre el puente nasal
+  const bridgeRaw=P(168), innerEyes=mid(P(133),P(362));
+  const bridge={
+    x:bridgeRaw.x*.75+innerEyes.x*.25,
+    y:bridgeRaw.y*.75+innerEyes.y*.25
+  };
   const cupid=P(0);             // centro exterior del labio superior
   const forehead=P(10);
   const chin=P(152);
@@ -732,7 +736,11 @@ function faceGeometry(w,h){
 
   // Aproximación del eje desde referencias centrales del puente y labio.
   // Se recalcula en cada frame; no presupone simetría perfecta.
-  let axis={x:cupid.x-bridge.x,y:cupid.y-bridge.y};
+  const nasalBase=P(2);
+  let axis={
+    x:(cupid.x*.75+nasalBase.x*.25)-bridge.x,
+    y:(cupid.y*.75+nasalBase.y*.25)-bridge.y
+  };
   let length=Math.hypot(axis.x,axis.y);
   if(length<d*.18){
     axis={x:chin.x-forehead.x,y:chin.y-forehead.y};
@@ -765,13 +773,13 @@ function eyebrowData(g){
       upper:[70,63,105,66,107],
       // Punto interior de cada ala nasal + borde de la narina.
       nostril:[97,98],
-      outerEye:33,
+      innerEye:133,outerEye:33,
       iris:[468,469,470,471,472]
     },
     {
       upper:[300,293,334,296,336],
       nostril:[326,327],
-      outerEye:263,
+      innerEye:362,outerEye:263,
       iris:[473,474,475,476,477]
     }
   ];
@@ -779,9 +787,35 @@ function eyebrowData(g){
     const upper=cfg.upper.map(i=>g.L(i));
     const sign=avg(upper.map(p=>p.x))<0?-1:1;
     const nostril=cfg.nostril.map(i=>g.L(i));
+    // 468/473 son CENTROS del iris; los cuatro siguientes son bordes.
+    // Proyectamos el contorno sobre el eje real de cada ojo, desde
+    // su comisura interna hasta la EXTERNA.
     const irisPoints=cfg.iris.map(i=>g.L(i));
-    const outerIris=irisPoints.slice(1).reduce((best,p)=>
-      sign*p.x>sign*best.x?p:best,irisPoints[0]);
+    const center=irisPoints[0];
+    const eyeInner=g.L(cfg.innerEye),eyeOuter=g.L(cfg.outerEye);
+    const eyeWidth=dist(eyeInner,eyeOuter);
+    const direction={
+      x:(eyeOuter.x-eyeInner.x)/eyeWidth,
+      y:(eyeOuter.y-eyeInner.y)/eyeWidth
+    };
+    const project=p=>(p.x-center.x)*direction.x+
+                     (p.y-center.y)*direction.y;
+    const ring=irisPoints.slice(1).map(project);
+    const outward=Math.max(...ring), inward=Math.min(...ring);
+    const diameter=outward-inward;
+    const centerAlong=(center.x-eyeInner.x)*direction.x+
+                      (center.y-eyeInner.y)*direction.y;
+    const relativeDiameter=diameter/eyeWidth;
+    // Una lectura en la pupila, iris mal dimensionado o desplazado
+    // se rechaza en vez de producir PA erróneas.
+    const irisValid=Number.isFinite(relativeDiameter)&&
+      relativeDiameter>=.19&&relativeDiameter<=.70&&
+      centerAlong>=eyeWidth*.12&&centerAlong<=eyeWidth*.88&&
+      outward>=diameter*.22&&-inward>=diameter*.22;
+    const outerIris=irisValid?{
+      x:center.x+direction.x*outward,
+      y:center.y+direction.y*outward
+    }:null;
 
     return {
       upper,sign,
@@ -800,10 +834,22 @@ function compute(w,h){
   const g=faceGeometry(w,h);
   if(!g)return null;
   const brows=eyebrowData(g);
-  if(brows[0].sign===brows[1].sign)return null;
+  if(brows[0].sign===brows[1].sign||
+     brows.some(b=>!b.iris))return null;
   const piDistance=avg(brows.map(b=>Math.abs(b.nose.x)));
   if(!Number.isFinite(piDistance)||piDistance<g.d*.025||
      piDistance>g.d*.33)return null;
+  // Verificar que la PA atraviesa el sector de la ceja natural.
+  // Se bloquea la captura si una lectura ocular está desalineada.
+  for(const b of brows){
+    const browY=avg(b.upper.map(p=>p.y));
+    const hit=atY(b.nose,b.iris,browY);
+    if(!hit)return null;
+    const xPositions=b.upper.map(p=>p.x);
+    const margin=g.d*.20;
+    if(hit.x<Math.min(...xPositions)-margin||
+       hit.x>Math.max(...xPositions)+margin)return null;
+  }
   // Eje central x=0 coincide con puente nasal y labio superior.
   return {g,brows,cupid:g.L(0),piDistance};
 }
